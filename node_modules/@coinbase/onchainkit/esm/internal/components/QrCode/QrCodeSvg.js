@@ -1,0 +1,127 @@
+import { useId, useMemo } from 'react';
+import { useTheme } from '../../hooks/useTheme.js';
+import { QR_CODE_SIZE, ockThemeToLinearGradientColorMap, linearGradientStops, ockThemeToRadialGradientColorMap, presetGradients, GRADIENT_START_COORDINATES, GRADIENT_END_COORDINATES, QR_LOGO_RADIUS, QR_LOGO_BACKGROUND_COLOR, QR_LOGO_SIZE } from './gradientConstants.js';
+import { useCorners } from './useCorners.js';
+import { useDotsPath } from './useDotsPath.js';
+import { useLogo } from './useLogo.js';
+import { useMatrix } from './useMatrix.js';
+import { jsxs, jsx } from 'react/jsx-runtime';
+function coordinateAsPercentage(coordinate) {
+  return `${coordinate * 100}%`;
+}
+function QrCodeSvg({
+  value,
+  size = QR_CODE_SIZE,
+  backgroundColor = '#ffffff',
+  logo,
+  logoSize = QR_LOGO_SIZE,
+  logoBackgroundColor = QR_LOGO_BACKGROUND_COLOR,
+  logoMargin = 5,
+  logoBorderRadius = QR_LOGO_RADIUS,
+  quietZone = 12,
+  quietZoneBorderRadius = 10,
+  ecl = 'Q',
+  gradientType = 'radial'
+}) {
+  const gradientRadius = size * 0.55;
+  const gradientCenterPoint = size / 2;
+  const uid = useId();
+  const theme = useTheme();
+  const themeName = theme.split('-')[0];
+  const isRadialGradient = gradientType === 'radial';
+  const fillColor = isRadialGradient ? `url(#radialGrad-${uid})` : '#000000';
+  const bgColor = isRadialGradient ? backgroundColor : `url(#linearGrad-${uid})`;
+  const linearGradientColor = ockThemeToLinearGradientColorMap[themeName] ?? ockThemeToLinearGradientColorMap.default;
+  const linearColors = [linearGradientStops[linearGradientColor].startColor, linearGradientStops[linearGradientColor].endColor];
+  const radialGradientColor = ockThemeToRadialGradientColorMap[themeName] ?? ockThemeToRadialGradientColorMap.default;
+  const presetGradientForColor = presetGradients[radialGradientColor];
+  const matrix = useMatrix(ecl, value);
+  const corners = useCorners(size, matrix.length, bgColor, fillColor, uid);
+  const x1 = GRADIENT_START_COORDINATES.x,
+    y1 = GRADIENT_START_COORDINATES.y;
+  const x2 = GRADIENT_END_COORDINATES.x,
+    y2 = GRADIENT_END_COORDINATES.y;
+  const viewBox = useMemo(() => {
+    return [-quietZone, -quietZone, size + quietZone * 2, size + quietZone * 2].join(' ');
+  }, [quietZone, size]);
+  const svgLogo = useLogo({
+    size,
+    logo,
+    logoSize,
+    logoBackgroundColor,
+    logoMargin,
+    logoBorderRadius
+  });
+  const path = useDotsPath({
+    matrix,
+    size,
+    logoSize,
+    logoMargin,
+    logoBorderRadius,
+    hasLogo: !!logo
+  });
+  if (!path || !value) {
+    return null;
+  }
+  return /*#__PURE__*/jsxs("svg", {
+    viewBox: viewBox,
+    width: size,
+    height: size,
+    children: [/*#__PURE__*/jsx("title", {
+      children: "QR Code"
+    }), /*#__PURE__*/jsx("defs", {
+      children: isRadialGradient ? /*#__PURE__*/jsx("radialGradient", {
+        id: `radialGrad-${uid}`,
+        "data-testid": "radialGrad",
+        rx: gradientRadius,
+        ry: gradientRadius,
+        cx: gradientCenterPoint,
+        cy: gradientCenterPoint,
+        gradientUnits: "userSpaceOnUse",
+        children: presetGradientForColor.map(([gradientColor, offset]) => /*#__PURE__*/jsx("stop", {
+          offset: offset,
+          stopColor: gradientColor,
+          stopOpacity: 1
+        }, `${gradientColor}${offset}`))
+      }) : /*#__PURE__*/jsxs("linearGradient", {
+        id: `linearGrad-${uid}`,
+        "data-testid": "linearGrad",
+        x1: coordinateAsPercentage(x1),
+        y1: coordinateAsPercentage(y1),
+        x2: coordinateAsPercentage(x2),
+        y2: coordinateAsPercentage(y2),
+        gradientUnits: "userSpaceOnUse",
+        children: [/*#__PURE__*/jsx("stop", {
+          offset: "0",
+          stopColor: linearColors[0]
+        }), /*#__PURE__*/jsx("stop", {
+          offset: "1",
+          stopColor: linearColors[1]
+        })]
+      })
+    }), /*#__PURE__*/jsx("g", {
+      children: /*#__PURE__*/jsx("rect", {
+        rx: quietZoneBorderRadius,
+        ry: quietZoneBorderRadius,
+        x: -quietZone,
+        y: -quietZone,
+        width: size + quietZone * 2,
+        height: size + quietZone * 2,
+        fill: backgroundColor,
+        stroke: bgColor,
+        strokeWidth: 2
+      })
+    }), /*#__PURE__*/jsxs("g", {
+      children: [/*#__PURE__*/jsx("path", {
+        d: path,
+        fill: fillColor,
+        strokeLinecap: "butt",
+        stroke: fillColor,
+        strokeWidth: 0,
+        opacity: 0.6
+      }), corners, svgLogo]
+    })]
+  });
+}
+export { QrCodeSvg };
+//# sourceMappingURL=QrCodeSvg.js.map

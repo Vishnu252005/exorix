@@ -1,0 +1,1 @@
+{"version":3,"file":"isContract.js","sources":["../../../src/transaction/utils/isContract.ts"],"sourcesContent":null,"names":["isContract","transaction"],"mappings":"AAGO,SAASA,UAAUA,CACxBC,WAA8C,EACH;EAC3C,OAAO,KAAK,IAAIA,WAAW;AAC7B;;;;"}

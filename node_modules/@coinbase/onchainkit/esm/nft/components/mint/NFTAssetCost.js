@@ -1,0 +1,39 @@
+import { multiplyFloats } from '../../../internal/utils/multiplyFloats.js';
+import { useNFTContext } from '../NFTProvider.js';
+import { cn, text } from '../../../styles/theme.js';
+import { formatAmount } from '../../../swap/utils/formatAmount.js';
+import { formatAmount as formatAmount$1 } from '../../../token/utils/formatAmount.js';
+import { jsx, jsxs } from 'react/jsx-runtime';
+function NFTAssetCost({
+  className
+}) {
+  const _useNFTContext = useNFTContext(),
+    price = _useNFTContext.price,
+    quantity = _useNFTContext.quantity;
+  if (price?.amount === undefined || !price.currency || price.amountUSD === undefined) {
+    return null;
+  }
+  if (Number(price?.amount) === 0) {
+    return /*#__PURE__*/jsx("div", {
+      className: cn(text.body, 'flex py-1', className),
+      children: "Free"
+    });
+  }
+  return /*#__PURE__*/jsxs("div", {
+    className: cn(text.body, 'flex py-1', className),
+    children: [/*#__PURE__*/jsxs("div", {
+      className: text.headline,
+      children: [formatAmount(`${multiplyFloats(Number(price.amount), quantity)}`), ' ', price.currency]
+    }), /*#__PURE__*/jsx("div", {
+      className: "px-2",
+      children: "~"
+    }), /*#__PURE__*/jsxs("div", {
+      children: ["$", formatAmount$1(`${multiplyFloats(Number(price.amountUSD), quantity)}`, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })]
+    })]
+  });
+}
+export { NFTAssetCost };
+//# sourceMappingURL=NFTAssetCost.js.map
