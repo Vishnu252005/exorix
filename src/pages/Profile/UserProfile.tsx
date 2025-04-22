@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db, createEvent, updateEvent, createBlog, updateBlog, createJob } from '../../firebase';
-import { doc, getDoc, updateDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, getDocs, query, where, addDoc, setDoc } from 'firebase/firestore';
+import { Timestamp } from 'firebase/firestore';
 import {
   User,
   Mail,
@@ -275,18 +276,37 @@ const UserProfile = () => {
   const handleCreateEvent = async (eventData: any) => {
     try {
       setLoading(true);
-      const result = await createEvent(eventData);
-      if (result.success) {
-        setShowCreateEventModal(false);
-        // Refresh user data to show new event
-        if (user) {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists()) {
-            setUserData(userDoc.data() as UserData);
-          }
+      // Create the event document with registration fields
+      const eventRef = await addDoc(collection(db, 'events'), {
+        ...eventData,
+        createdBy: user?.uid,
+        creatorEmail: user?.email,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+        registeredUsers: [],
+        status: eventData.status || 'Registration Open'
+      });
+
+      // Create the registrations subcollection with _info document
+      await setDoc(doc(eventRef, 'registrations', '_info'), {
+        totalRegistrations: 0,
+        lastUpdated: new Date(),
+        registrationConfig: {
+          requirePayment: !!eventData.registrationFee,
+          paymentAmount: eventData.registrationFee,
+          paymentInstructions: eventData.paymentInstructions,
+          upiId: eventData.upiId,
+          organizerPhone: eventData.organizerPhone
         }
-      } else {
-        setError(result.error);
+      });
+
+      setShowCreateEventModal(false);
+      // Refresh user data to show new event
+      if (user) {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          setUserData(userDoc.data() as UserData);
+        }
       }
     } catch (err: any) {
       console.error('Error creating event:', err);

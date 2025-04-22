@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db, createEvent, createJob } from '../../firebase';
-import { doc, getDoc, updateDoc, collection, getDocs, query, where, addDoc, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, getDocs, query, where, addDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import {
   User,
   Mail,
@@ -30,16 +30,23 @@ import {
   Smile,
   RefreshCw,
   Check,
-  FileText
+  FileText,
+  Trash2,
+  MapPin,
+  Loader2,
+  Cpu
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import ProfileAvatar from '../../components/ProfileAvatar';
 import CreateEventModal from '../../components/CreateEventModal';
 import CreateJobModal from '../../components/CreateJobModal';
+import CreateBlogModal from '../../components/CreateBlogModal';
 import { useAuth } from '../../context/AuthContext';
 import { Timestamp } from 'firebase/firestore';
 import NFTRewards from '../admin/NFTRewards';
 import { toast } from 'react-hot-toast';
+import { format } from 'date-fns';
+import EditEventModal from '../../components/EditEventModal';
 
 interface AdminData {
   firstName: string;
@@ -50,8 +57,20 @@ interface AdminData {
   events?: Array<{
     id: string;
     title: string;
-    date: any;
-    status: 'upcoming' | 'completed';
+    description: string;
+    date: Timestamp;
+    location: string;
+    capacity: number;
+    game: string;
+    prize: string;
+    registrationFee: string;
+    image: string;
+    status: 'Registration Open' | 'Coming Soon' | 'Completed';
+    organizerPhone?: string;
+    upiId?: string;
+    paymentInstructions?: string;
+    creatorEmail?: string;
+    registrations?: any[];
     registeredUsers?: string[];
   }>;
   jobs?: Array<{
@@ -95,6 +114,25 @@ const AVATAR_STYLES: AvatarStyle[] = [
   { id: 'croodles', name: 'Doodle', preview: 'https://api.dicebear.com/7.x/croodles/svg?seed=preview15' }
 ];
 
+interface Blog {
+  id: string;
+  title: string;
+  content: string;
+  summary: string;
+  category: string;
+  tags: string[];
+  coverImage: string;
+  status: 'draft' | 'published';
+  seoKeywords?: string[];
+  structure?: string[];
+  createdAt: Timestamp;
+  createdBy: string;
+  likes: number;
+  comments: number;
+  aiGenerated?: boolean;
+  aiPrompt?: string;
+}
+
 const AdminProfile = () => {
   const [adminData, setAdminData] = useState<AdminData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -112,7 +150,8 @@ const AdminProfile = () => {
   });
   const [newBlog, setNewBlog] = useState({
     title: '',
-    content: ''
+    content: '',
+    aiPrompt: ''
   });
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [selectedStyle, setSelectedStyle] = useState<string>('avataaars');
@@ -120,6 +159,10 @@ const AdminProfile = () => {
   const [currentAvatar, setCurrentAvatar] = useState<string>('');
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const fetchStats = async () => {
     if (!user) return;
@@ -145,7 +188,7 @@ const AdminProfile = () => {
         if (eventData.registeredUsers) {
           totalRegistrations += eventData.registeredUsers.length;
         }
-        if (eventData.status === 'upcoming') {
+        if (eventData.status === 'Registration Open') {
           activeEvents++;
         }
       });
@@ -207,6 +250,27 @@ const AdminProfile = () => {
     }
   }, [adminData, selectedStyle, avatarSeed]);
 
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const eventsCollection = collection(db, 'events');
+        const eventsSnapshot = await getDocs(eventsCollection);
+        const eventsData = eventsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Event[];
+        setEvents(eventsData);
+        setEventsLoading(false);
+      } catch (err) {
+        console.error('Error fetching events:', err);
+        setError('Failed to load events');
+        setEventsLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -220,22 +284,37 @@ const AdminProfile = () => {
   const handleCreateEvent = async (eventData: any) => {
     try {
       setLoading(true);
-      const result = await createEvent(eventData);
-      if (result.success) {
-        setShowCreateEventModal(false);
-        // Refresh admin data to show new event
-        if (user) {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists()) {
-            setAdminData(userDoc.data() as AdminData);
-          }
+      // Create the event document with registration fields
+      const eventRef = await addDoc(collection(db, 'events'), {
+        ...eventData,
+        createdBy: user?.uid,
+        creatorEmail: user?.email,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+        registeredUsers: [],
+        status: eventData.status || 'Registration Open'
+      });
+
+      // Create the registrations subcollection with _info document
+      await setDoc(doc(eventRef, 'registrations', '_info'), {
+        totalRegistrations: 0,
+        lastUpdated: new Date(),
+        registrationConfig: {
+          requirePayment: !!eventData.registrationFee,
+          paymentAmount: eventData.registrationFee,
+          paymentInstructions: eventData.paymentInstructions,
+          upiId: eventData.upiId,
+          organizerPhone: eventData.organizerPhone
         }
-      } else {
-        setError(result.error);
-      }
+      });
+
+      setShowCreateEventModal(false);
+      // Refresh admin data to show new event
+      await fetchStats();
+      toast.success('Event created successfully!');
     } catch (err: any) {
       console.error('Error creating event:', err);
-      setError(err.message || 'Failed to create event');
+      toast.error(err.message || 'Failed to create event');
     } finally {
       setLoading(false);
     }
@@ -265,25 +344,66 @@ const AdminProfile = () => {
     }
   };
 
-  const handleCreateBlog = async () => {
+  const generateBlogContent = async (prompt: string) => {
+    try {
+      setIsGenerating(true);
+      const response = await fetch('/api/groq/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate content');
+      }
+
+      const data = await response.json();
+      setNewBlog(prev => ({
+        ...prev,
+        content: data.content,
+        aiGenerated: true,
+        aiPrompt: prompt
+      }));
+    } catch (err) {
+      console.error('Error generating blog content:', err);
+      toast.error('Failed to generate blog content');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleCreateBlog = async (blogData: {
+    title: string;
+    content: string;
+    summary: string;
+    category: string;
+    tags: string[];
+    coverImage: string;
+    status: 'draft' | 'published';
+    seoKeywords?: string[];
+    structure?: string[];
+  }) => {
     if (!user) return;
     
     try {
-      const blogData = {
-        title: newBlog.title,
-        content: newBlog.content,
+      const blogRef = await addDoc(collection(db, 'blogs'), {
+        ...blogData,
         createdAt: Timestamp.now(),
         createdBy: user.uid,
         likes: 0,
         comments: 0
-      };
-
-      const blogRef = await addDoc(collection(db, 'blogs'), blogData);
+      });
       
       // Update user's blogs array
       const updatedBlogs = [...(adminData?.blogs || []), {
         id: blogRef.id,
-        ...blogData
+        ...blogData,
+        createdAt: Timestamp.now(),
+        createdBy: user.uid,
+        likes: 0,
+        comments: 0
       }];
 
       await updateDoc(doc(db, 'users', user.uid), {
@@ -293,10 +413,10 @@ const AdminProfile = () => {
       setAdminData(prev => prev ? { ...prev, blogs: updatedBlogs } : null);
       await fetchStats();
       setShowCreateBlogModal(false);
-      setNewBlog({ title: '', content: '' });
+      toast.success('Blog created successfully!');
     } catch (err) {
       console.error('Error creating blog:', err);
-      setError('Failed to create blog');
+      toast.error('Failed to create blog');
     }
   };
 
@@ -324,6 +444,68 @@ const AdminProfile = () => {
     } catch (error) {
       console.error('Error updating avatar:', error);
       toast.error('Failed to update avatar');
+    }
+  };
+
+  const handleEditEvent = async (eventData: any) => {
+    try {
+      setLoading(true);
+      const eventRef = doc(db, 'events', eventData.id);
+      
+      // Update the event document
+      await updateDoc(eventRef, {
+        ...eventData,
+        updatedAt: Timestamp.now()
+      });
+
+      // Update the registrations/_info document
+      const registrationsInfoRef = doc(db, 'events', eventData.id, 'registrations', '_info');
+      await updateDoc(registrationsInfoRef, {
+        lastUpdated: new Date(),
+        registrationConfig: {
+          requirePayment: !!eventData.registrationFee,
+          paymentAmount: eventData.registrationFee,
+          paymentInstructions: eventData.paymentInstructions,
+          upiId: eventData.upiId,
+          organizerPhone: eventData.organizerPhone
+        }
+      });
+
+      await fetchStats();
+      toast.success('Event updated successfully!');
+    } catch (err: any) {
+      console.error('Error updating event:', err);
+      toast.error(err.message || 'Failed to update event');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const eventRef = doc(db, 'events', eventId);
+      
+      // Delete the event document
+      await deleteDoc(eventRef);
+      
+      // Delete the registrations subcollection
+      const registrationsRef = collection(db, 'events', eventId, 'registrations');
+      const registrationsSnapshot = await getDocs(registrationsRef);
+      const deletePromises = registrationsSnapshot.docs.map(doc => deleteDoc(doc.ref));
+      await Promise.all(deletePromises);
+
+      await fetchStats();
+      toast.success('Event deleted successfully!');
+    } catch (err: any) {
+      console.error('Error deleting event:', err);
+      toast.error(err.message || 'Failed to delete event');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -517,216 +699,226 @@ const AdminProfile = () => {
         {/* Dashboard View */}
         {activeTab === 'dashboard' && (
           <>
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50 hover:border-indigo-500/50 transition-all duration-300"
-              >
+            {/* Stats Section */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-400">Total Events</p>
-                    <h3 className="text-2xl font-bold text-white mt-1">{adminData.events?.length || 0}</h3>
+                    <h3 className="text-2xl font-bold text-white mt-1">{events.length}</h3>
                   </div>
                   <div className="p-3 bg-indigo-500/20 rounded-lg">
                     <Calendar className="w-6 h-6 text-indigo-400" />
                   </div>
                 </div>
-              </motion.div>
+              </div>
 
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50 hover:border-indigo-500/50 transition-all duration-300"
-              >
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-400">Total Registrations</p>
                     <h3 className="text-2xl font-bold text-white mt-1">
-                      {adminData.events?.reduce((acc, event) => acc + (event.registeredUsers?.length || 0), 0) || 0}
+                      {events.reduce((acc, event) => acc + (event.registrations?.length || 0), 0)}
                     </h3>
                   </div>
                   <div className="p-3 bg-purple-500/20 rounded-lg">
                     <Users className="w-6 h-6 text-purple-400" />
                   </div>
                 </div>
-              </motion.div>
+              </div>
 
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50 hover:border-indigo-500/50 transition-all duration-300"
-              >
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-400">Active Events</p>
                     <h3 className="text-2xl font-bold text-white mt-1">
-                      {adminData.events?.filter(event => event.status === 'upcoming').length || 0}
+                      {events.filter(event => event.status === 'Registration Open').length}
                     </h3>
                   </div>
                   <div className="p-3 bg-green-500/20 rounded-lg">
                     <BarChart className="w-6 h-6 text-green-400" />
                   </div>
                 </div>
-              </motion.div>
-
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50 hover:border-indigo-500/50 transition-all duration-300"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-400">Job Openings</p>
-                    <h3 className="text-2xl font-bold text-white mt-1">{adminData.jobs?.length || 0}</h3>
-                  </div>
-                  <div className="p-3 bg-yellow-500/20 rounded-lg">
-                    <Briefcase className="w-6 h-6 text-yellow-400" />
-                  </div>
-                </div>
-              </motion.div>
-
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50 hover:border-indigo-500/50 transition-all duration-300"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-400">Total Blogs</p>
-                    <h3 className="text-2xl font-bold text-white mt-1">{stats.totalBlogs}</h3>
-                  </div>
-                  <div className="p-3 bg-indigo-500/20 rounded-lg">
-                    <FileText className="w-6 h-6 text-indigo-400" />
-                  </div>
-                </div>
-              </motion.div>
+              </div>
             </div>
 
-            {/* Recent Events and Blogs */}
-            <div className="space-y-8">
-              {/* Recent Events */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-gray-800/30 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50"
-              >
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-white">Recent Events</h2>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setShowCreateEventModal(true)}
-                    className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                  >
-                    <PlusCircle className="w-5 h-5" />
-                    <span>Create Event</span>
-                  </motion.button>
-                </div>
+            {/* Recent Events Section */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-8">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-white">Recent Events</h2>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowCreateEventModal(true)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  <PlusCircle className="w-5 h-5" />
+                  <span>Create Event</span>
+                </motion.button>
+              </div>
 
-                {adminData.events && adminData.events.length > 0 ? (
-                  <div className="space-y-4">
-                    {adminData.events.slice(0, 5).map((event) => (
+              {eventsLoading ? (
+                <div className="text-center py-8">
+                  <Loader className="w-8 h-8 text-indigo-400 animate-spin mx-auto" />
+                  <p className="mt-2 text-gray-400">Loading events...</p>
+                </div>
+              ) : events.length === 0 ? (
+                <div className="text-center py-8">
+                  <Calendar className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-sm font-medium text-white">No events yet</h3>
+                  <p className="mt-1 text-sm text-gray-400">
+                    Get started by creating your first event.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {events
+                    .filter(event => event.status !== 'Completed')
+                    .sort((a, b) => b.date.toMillis() - a.date.toMillis())
+                    .slice(0, 6)
+                    .map((event) => (
                       <motion.div
                         key={event.id}
-                        whileHover={{ scale: 1.01 }}
-                        className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50 hover:border-indigo-500/50 transition-all duration-300"
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5 }}
+                        className="group relative overflow-hidden rounded-2xl bg-gray-800/30 backdrop-blur-sm border border-gray-700/50 transition-all duration-300 hover:border-indigo-500/50"
                       >
-                        <div className="flex items-center justify-between">
-                <div>
-                            <h3 className="font-medium text-white">{event.title}</h3>
-                            <p className="text-sm text-gray-400">
-                              {event.date.toDate().toLocaleDateString()}
-                            </p>
-                </div>
-                          <div className="flex items-center space-x-4">
-                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                              event.status === 'upcoming' 
-                                ? 'bg-green-500/20 text-green-400'
-                                : 'bg-gray-500/20 text-gray-400'
-                            }`}>
-                              {event.status}
+                        <div className="relative aspect-video overflow-hidden">
+                          <img
+                            src={event.image || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80'}
+                            alt={event.title}
+                            className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                          <div className="absolute top-4 left-4">
+                            <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+                              {event.status || 'Registration Open'}
                             </span>
-                            <motion.button
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                              onClick={() => navigate(`/events/${event.id}/edit`)}
-                              className="text-indigo-400 hover:text-indigo-300"
-                              title="Edit Event"
-                            >
-                              <Edit3 className="w-5 h-5" />
-                            </motion.button>
-                </div>
-              </div>
-                      </motion.div>
-                    ))}
-            </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <Calendar className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-2 text-sm font-medium text-white">No events yet</h3>
-                    <p className="mt-1 text-sm text-gray-400">
-                      Get started by creating your first event.
-                    </p>
-          </div>
-                )}
-              </motion.div>
+                          </div>
+                        </div>
 
-              {/* Blogs Section */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="bg-gray-800/30 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50"
-              >
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-white">Your Blogs</h2>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setShowCreateBlogModal(true)}
-                    className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                  >
-                    <Plus className="w-5 h-5" />
-                    <span>Create Blog</span>
-                  </motion.button>
-                </div>
-
-                {/* Blogs List */}
-                {adminData.blogs && adminData.blogs.length > 0 ? (
-                  <div className="space-y-4">
-                    {adminData.blogs.map((blog) => (
-                      <motion.div
-                        key={blog.id}
-                        whileHover={{ scale: 1.01 }}
-                        className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50 hover:border-indigo-500/50 transition-all duration-300"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="font-medium text-white">{blog.title}</h3>
-                            <p className="text-sm text-gray-400">
-                              {blog.createdAt?.toDate ? blog.createdAt.toDate().toLocaleDateString() : new Date(blog.createdAt).toLocaleDateString()}
-                            </p>
-                            <div className="flex items-center space-x-4 mt-2">
-                              <span className="text-sm text-gray-400">
-                                {blog.likes} likes
-                              </span>
-                              <span className="text-sm text-gray-400">
-                                {blog.comments} comments
-                              </span>
+                        <div className="p-6">
+                          <h3 className="text-xl font-bold text-white mb-4 group-hover:text-indigo-400 transition-colors">
+                            {event.title}
+                          </h3>
+                          {event.description && (
+                            <p className="text-sm text-gray-400 mb-2">{event.description}</p>
+                          )}
+                          
+                          <div className="space-y-3 mb-6">
+                            <div className="flex items-center text-gray-300">
+                              <Gamepad2 className="w-5 h-5 mr-2 text-indigo-400" />
+                              {event.game || 'Various Games'}
                             </div>
+                            <div className="flex items-center text-gray-300">
+                              <Trophy className="w-5 h-5 mr-2 text-indigo-400" />
+                              Prize Pool: {event.prize || 'TBA'}
+                            </div>
+                            <div className="flex items-center text-gray-300">
+                              <DollarSign className="w-5 h-5 mr-2 text-indigo-400" />
+                              Registration: {event.registrationFee || 'Free Entry'}
+                            </div>
+                            <div className="flex items-center text-gray-300">
+                              <Calendar className="w-5 h-5 mr-2 text-indigo-400" />
+                              {format(event.date.toDate(), 'MMM dd, yyyy')}
+                            </div>
+                            <div className="flex items-center text-gray-300">
+                              <MapPin className="w-5 h-5 mr-2 text-indigo-400" />
+                              {event.location}
+                            </div>
+                            <div className="flex items-center text-gray-300">
+                              <Users className="w-5 h-5 mr-2 text-indigo-400" />
+                              {event.registrations?.length || 0}/{event.capacity} teams
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => setSelectedEvent(event)}
+                              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                              Edit Event
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => handleDeleteEvent(event.id)}
+                              className="px-4 py-2 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 transition-colors flex items-center gap-2"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Delete
+                            </motion.button>
                           </div>
                         </div>
                       </motion.div>
                     ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <FileText className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-2 text-sm font-medium text-white">No blogs yet</h3>
-                    <p className="mt-1 text-sm text-gray-400">
-                      Create your first blog to get started.
-                    </p>
-                  </div>
-                )}
-              </motion.div>
-          </div>
+                </div>
+              )}
+            </div>
+
+            {/* Blogs Section */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-gray-800/30 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-white">Your Blogs</h2>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowCreateBlogModal(true)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span>Create Blog</span>
+                </motion.button>
+              </div>
+
+              {/* Blogs List */}
+              {adminData.blogs && adminData.blogs.length > 0 ? (
+                <div className="space-y-4">
+                  {adminData.blogs.map((blog) => (
+                    <motion.div
+                      key={blog.id}
+                      whileHover={{ scale: 1.01 }}
+                      className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50 hover:border-indigo-500/50 transition-all duration-300"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-medium text-white">{blog.title}</h3>
+                          <p className="text-sm text-gray-400">
+                            {blog.createdAt?.toDate ? blog.createdAt.toDate().toLocaleDateString() : new Date(blog.createdAt).toLocaleDateString()}
+                          </p>
+                          <div className="flex items-center space-x-4 mt-2">
+                            <span className="text-sm text-gray-400">
+                              {blog.likes} likes
+                            </span>
+                            <span className="text-sm text-gray-400">
+                              {blog.comments} comments
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <FileText className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-sm font-medium text-white">No blogs yet</h3>
+                  <p className="mt-1 text-sm text-gray-400">
+                    Create your first blog to get started.
+                  </p>
+                </div>
+              )}
+            </motion.div>
           </>
         )}
 
@@ -749,42 +941,58 @@ const AdminProfile = () => {
               </motion.button>
             </div>
               
-            <div className="grid gap-6">
-              {adminData.events && adminData.events.map((event) => (
-                <motion.div
-                  key={event.id}
-                  whileHover={{ scale: 1.01 }}
-                  className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50 hover:border-indigo-500/50 transition-all duration-300"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-medium text-white">{event.title}</h3>
-                      <p className="text-sm text-gray-400 mt-1">
-                        {event.date.toDate().toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        event.status === 'upcoming' 
-                          ? 'bg-green-500/20 text-green-400'
-                          : 'bg-gray-500/20 text-gray-400'
-                      }`}>
-                        {event.status}
-                      </span>
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => navigate(`/events/${event.id}/edit`)}
-                        className="text-indigo-400 hover:text-indigo-300"
-                        title="Edit Event"
-                      >
-                        <Edit3 className="w-5 h-5" />
-                      </motion.button>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+            <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+              <h2 className="text-2xl font-semibold mb-4">All Events</h2>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creator</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registrations</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {adminData.events && adminData.events.map((event) => (
+                      <tr key={event.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{event.title}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-500">
+                            {format(event.date.toDate(), 'MMM dd, yyyy')}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-500">{event.creatorEmail}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-500">
+                            {event.registrations?.length || 0} / {event.capacity}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <button
+                            onClick={() => setSelectedEvent(event)}
+                            className="text-indigo-600 hover:text-indigo-900 mr-4"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteEvent(event.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
+            </div>
           </div>
           )}
 
@@ -905,62 +1113,11 @@ const AdminProfile = () => {
       />
 
       {/* Create Blog Modal */}
-      {showCreateBlogModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-gray-800/90 backdrop-blur-sm rounded-2xl p-6 max-w-2xl w-full mx-4 border border-gray-700/50"
-          >
-            <h2 className="text-xl font-bold text-white mb-4">Create New Blog</h2>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="blogTitle" className="block text-sm font-medium text-gray-300 mb-1">
-                  Title
-                </label>
-                <input
-                  id="blogTitle"
-                  type="text"
-                  value={newBlog.title}
-                  onChange={(e) => setNewBlog(prev => ({ ...prev, title: e.target.value }))}
-                  className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-indigo-500"
-                  placeholder="Enter blog title"
-                />
-              </div>
-              <div>
-                <label htmlFor="blogContent" className="block text-sm font-medium text-gray-300 mb-1">
-                  Content
-                </label>
-                <textarea
-                  id="blogContent"
-                  value={newBlog.content}
-                  onChange={(e) => setNewBlog(prev => ({ ...prev, content: e.target.value }))}
-                  className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-indigo-500 min-h-[200px]"
-                  placeholder="Write your blog content here..."
-                />
-              </div>
-            </div>
-            <div className="flex justify-end space-x-4 mt-6">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setShowCreateBlogModal(false)}
-                className="px-4 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700/50 transition-colors"
-              >
-                Cancel
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleCreateBlog}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-              >
-                Create Blog
-              </motion.button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+      <CreateBlogModal
+        isOpen={showCreateBlogModal}
+        onClose={() => setShowCreateBlogModal(false)}
+        onSubmit={handleCreateBlog}
+      />
 
       {/* Avatar Customization Modal */}
       {showAvatarModal && (
@@ -1028,6 +1185,16 @@ const AdminProfile = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Edit Event Modal */}
+      {selectedEvent && (
+        <EditEventModal
+          isOpen={true}
+          onClose={() => setSelectedEvent(null)}
+          onSubmit={handleEditEvent}
+          eventData={selectedEvent}
+        />
       )}
     </div>
   );

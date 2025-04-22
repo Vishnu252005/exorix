@@ -1,19 +1,50 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Users, GamepadIcon, MessageSquare, X, DollarSign, CreditCard, Calendar, MapPin, ArrowRight, RefreshCw, Trash2, Cpu, Plus, Eye } from 'lucide-react';
-import { collection, getDocs, doc, updateDoc, arrayUnion, addDoc, increment, setDoc, getDoc, onSnapshot, writeBatch, deleteDoc } from 'firebase/firestore';
+import { Trophy, Users, GamepadIcon, MessageSquare, X, DollarSign, CreditCard, Calendar, MapPin, ArrowRight, RefreshCw, Trash2, Cpu, Plus, Eye, Loader2, Gift, AlertCircle, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { collection, getDocs, doc, updateDoc, arrayUnion, addDoc, increment, setDoc, getDoc, onSnapshot, writeBatch, deleteDoc, serverTimestamp, runTransaction } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
+import { useAccount, useConnect, useDisconnect, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { CONTRACT_ADDRESSES } from '../web3Config';
+
+interface TransactionReceipt {
+  blockNumber: bigint;
+  gasUsed: bigint;
+  status: 'success' | 'failure';
+}
 
 interface RegistrationModalProps {
   isOpen: boolean;
   onClose: () => void;
   event: any;
   onSubmit: (formData: any) => Promise<void>;
+  onClaimRewards: () => Promise<void>;
+  isClaiming: boolean;
+  isClaimLoading: boolean;
+  claimStatus: string;
+  claimError: string;
+  claimTxHash: string;
+  isClaimSuccess: boolean;
+  walletConnected: boolean;
+  claimReceipt: TransactionReceipt | null;
 }
 
-const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose, event, onSubmit }) => {
+const RegistrationModal: React.FC<RegistrationModalProps> = ({
+  isOpen,
+  onClose,
+  event,
+  onSubmit,
+  onClaimRewards,
+  isClaiming,
+  isClaimLoading,
+  claimStatus,
+  claimError,
+  claimTxHash,
+  isClaimSuccess,
+  walletConnected,
+  claimReceipt
+}) => {
   const [formData, setFormData] = useState({
     playerName: '',
     email: '',
@@ -32,13 +63,12 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose, 
     setLoading(true);
     setError('');
     setSuccess(false);
+
     try {
       await onSubmit(formData);
       setSuccess(true);
-      // Don't reload the page, just close the modal after 2 seconds
       setTimeout(() => {
         onClose();
-        // Navigate to profile page to see registered events
         window.location.href = '/profile';
       }, 2000);
     } catch (err: any) {
@@ -51,13 +81,18 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose, 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">Register for {event.title}</h2>
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-gray-900/95 rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto border border-indigo-500/20 shadow-xl shadow-indigo-500/10">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+              Register for {event.title}
+            </h2>
+            <p className="text-gray-400 text-sm mt-1">Fill in your details to participate</p>
+          </div>
           <button 
             onClick={onClose} 
-            className="text-gray-500 hover:text-gray-700"
+            className="text-gray-400 hover:text-gray-200 transition-colors p-2 hover:bg-gray-800/50 rounded-lg"
             title="Close registration modal"
           >
             <X className="w-6 h-6" />
@@ -65,55 +100,31 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose, 
         </div>
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 relative">
-            <strong className="font-bold">Error: </strong>
+          <div className="bg-red-900/20 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl mb-6 flex items-start">
+            <AlertCircle className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
+            <div>
+              <strong className="font-medium">Error: </strong>
             <span className="block sm:inline">{error}</span>
+            </div>
           </div>
         )}
 
         {success ? (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 relative">
-            <strong className="font-bold">Success! </strong>
+          <div className="bg-green-900/20 border border-green-500/20 text-green-400 px-4 py-3 rounded-xl mb-6 flex items-start">
+            <CheckCircle2 className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
+            <div>
+              <strong className="font-medium">Success! </strong>
             <span className="block sm:inline">
               Successfully registered for {event.title}. You will receive a confirmation email shortly.
             </span>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Payment Information Section */}
-            {event.registrationFee && (
-              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-6">
-                <h3 className="text-lg font-semibold text-blue-800 dark:text-blue-300 flex items-center mb-3">
-                  <DollarSign className="w-5 h-5 mr-2" />
-                  Payment Information
-                </h3>
-                <p className="text-blue-700 dark:text-blue-300 mb-2">
-                  <strong>Registration Fee:</strong> {event.registrationFee}
-                </p>
-                {event.upiId && (
-                  <p className="text-blue-700 dark:text-blue-300 mb-2">
-                    <strong>UPI ID:</strong> {event.upiId}
-                  </p>
-                )}
-                {event.organizerPhone && (
-                  <p className="text-blue-700 dark:text-blue-300 mb-2">
-                    <strong>Organizer Phone:</strong> {event.organizerPhone}
-                  </p>
-                )}
-                {event.paymentInstructions && (
-                  <div className="text-blue-700 dark:text-blue-300 mb-2">
-                    <strong>Payment Instructions:</strong>
-                    <p className="mt-1">{event.paymentInstructions}</p>
                   </div>
-                )}
-                <div className="mt-3 text-sm text-blue-600 dark:text-blue-400">
-                  Please complete the payment before submitting this form.
-                </div>
-              </div>
-            )}
-
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Form fields with enhanced styling */}
+            <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                 Player Name *
               </label>
               <input
@@ -121,13 +132,13 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose, 
                 required
                 value={formData.playerName}
                 onChange={(e) => setFormData({ ...formData, playerName: e.target.value })}
-                className="w-full px-4 py-2 rounded-md border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700/50 text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder:text-gray-500"
                 placeholder="Your gaming name"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                 Email *
               </label>
               <input
@@ -135,13 +146,13 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose, 
                 required
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-4 py-2 rounded-md border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700/50 text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder:text-gray-500"
                 placeholder="your@email.com"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                 Game ID *
               </label>
               <input
@@ -149,26 +160,26 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose, 
                 required
                 value={formData.gameId}
                 onChange={(e) => setFormData({ ...formData, gameId: e.target.value })}
-                className="w-full px-4 py-2 rounded-md border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700/50 text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder:text-gray-500"
                 placeholder="Your in-game ID"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                 Team Name
               </label>
               <input
                 type="text"
                 value={formData.teamName}
                 onChange={(e) => setFormData({ ...formData, teamName: e.target.value })}
-                className="w-full px-4 py-2 rounded-md border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700/50 text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder:text-gray-500"
                 placeholder="Your team name (if applicable)"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                 Phone Number *
               </label>
               <input
@@ -176,56 +187,134 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose, 
                 required
                 value={formData.phoneNumber}
                 onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                className="w-full px-4 py-2 rounded-md border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700/50 text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder:text-gray-500"
                 placeholder="Your contact number"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                 Discord ID
               </label>
               <input
                 type="text"
                 value={formData.discordId}
                 onChange={(e) => setFormData({ ...formData, discordId: e.target.value })}
-                className="w-full px-4 py-2 rounded-md border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700/50 text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder:text-gray-500"
                 placeholder="Your Discord username (optional)"
               />
             </div>
 
             {/* UPI Transaction ID Field */}
             {event.registrationFee && (
-              <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
                   UPI Transaction ID *
                 </label>
-                <div className="flex items-center">
-                  <CreditCard className="w-5 h-5 text-gray-400 mr-2" />
+                  <div className="relative">
+                    <CreditCard className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
                     type="text"
                     required
                     value={formData.upiTransactionId}
                     onChange={(e) => setFormData({ ...formData, upiTransactionId: e.target.value })}
-                    className="w-full px-4 py-2 rounded-md border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full pl-12 pr-4 py-3 bg-gray-800/50 border border-gray-700/50 text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder:text-gray-500"
                     placeholder="Enter your UPI transaction ID"
                   />
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  Please enter the transaction ID after making the payment to {event.upiId || "the organizer's UPI ID"}
+                  <p className="text-sm text-gray-400 mt-2">
+                    Please enter the transaction ID after making the payment
                 </p>
               </div>
             )}
 
-            <div className="mt-6">
+              {/* Payment section above register button */}
+              <div className="border-t border-gray-700/50 pt-6">
+                <h3 className="text-lg font-semibold text-gray-200 mb-4">Payment Details</h3>
+                
+                {/* Payment button */}
+                <button
+                  onClick={onClaimRewards}
+                  disabled={isClaiming || isClaimLoading || !walletConnected}
+                  className={`w-full px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-500/25 transition-all duration-300 ${
+                    (isClaiming || isClaimLoading || !walletConnected) ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                >
+                  {!walletConnected ? (
+                    <div className="flex items-center justify-center">
+                      <AlertCircle className="w-5 h-5 mr-2" />
+                      <span>Connect Wallet to Pay</span>
+                    </div>
+                  ) : (isClaiming || isClaimLoading) ? (
+                    <div className="flex items-center justify-center">
+                      <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                      <span>Processing Payment...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center">
+                      <CreditCard className="w-5 h-5 mr-2" />
+                      <span>Pay Registration Fee</span>
+                    </div>
+                  )}
+                </button>
+
+                {/* Status messages */}
+                {(claimStatus || claimError) && (
+                  <div className="mt-4 p-4 rounded-xl bg-gray-800/50 border border-gray-700/50 space-y-3">
+                    {claimStatus && (
+                      <div className="flex items-center space-x-2">
+                        {isClaimLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
+                        ) : isClaimSuccess ? (
+                          <CheckCircle2 className="w-4 h-4 text-green-400" />
+                        ) : (
+                          <AlertCircle className="w-4 h-4 text-yellow-400" />
+                        )}
+                        <p className="text-gray-300">{claimStatus}</p>
+                      </div>
+                    )}
+
+                    {claimError && (
+                      <div className="flex items-start space-x-3 text-red-400">
+                        <AlertCircle className="w-5 h-5 mt-0.5" />
+                        <span>{claimError}</span>
+                      </div>
+                    )}
+
+                    {claimTxHash && (
+                      <a
+                        href={`https://sepolia.basescan.org/tx/${claimTxHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center space-x-2 text-indigo-400 hover:text-indigo-300 transition-colors text-sm"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        <span>View Transaction on Base Sepolia Explorer</span>
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Registration button at the bottom */}
               <button
                 type="submit"
-                disabled={loading}
-                className={`w-full px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors ${
-                  loading ? 'opacity-50 cursor-not-allowed' : ''
+                disabled={loading || !claimReceipt || claimReceipt.status !== 'success'}
+                className={`w-full px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 ${
+                  (loading || !claimReceipt || claimReceipt.status !== 'success') ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
               >
-                {loading ? 'Registering...' : 'Register for Event'}
+                {loading ? (
+                  <div className="flex items-center justify-center">
+                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                    <span>Registering...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center">
+                    <ArrowRight className="w-5 h-5 mr-2" />
+                    <span>Register for Event</span>
+                  </div>
+                )}
               </button>
             </div>
           </form>
@@ -435,6 +524,25 @@ interface AuthContextType {
   } | null;
 }
 
+// Add these contract ABIs
+const rewardTokenABI = [
+  "function balanceOf(address account) public view returns (uint256)",
+  "function decimals() public view returns (uint8)"
+] as const;
+
+const distributorABI = [
+  {
+    name: "distributeRewards",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "recipient", type: "address" },
+      { name: "amount", type: "uint256" }
+    ],
+    outputs: []
+  }
+] as const;
+
 const Esports = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
@@ -448,6 +556,81 @@ const Esports = () => {
   const { user, userData } = auth;
   const [selectedMatch, setSelectedMatch] = useState<MatchPair | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isClaiming, setIsClaiming] = useState(false);
+  const [claimStatus, setClaimStatus] = useState('');
+  const [claimError, setClaimError] = useState('');
+  const [claimTxHash, setClaimTxHash] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const { address: walletAddress } = useAccount();
+  const [claimReceipt, setClaimReceipt] = useState<TransactionReceipt | null>(null);
+
+  // Add contract write hooks
+  const { writeContract: distributeReward, data: claimTxHashData, error: claimErrorData } = useWriteContract();
+
+  // Add transaction receipt hook
+  const { isLoading: isClaimLoading, isSuccess: isClaimSuccess, data: claimReceiptData } = useWaitForTransactionReceipt({
+    hash: claimTxHashData,
+  });
+
+  // Add claim rewards handler
+  const handleClaimRewards = async () => {
+    if (!walletAddress) {
+      setClaimError('Please connect your wallet first');
+      return;
+    }
+
+    try {
+      setClaimError('');
+      setClaimStatus('Initiating transaction...');
+      setIsClaiming(true);
+      console.log('Starting reward claim...');
+      
+      const amount = BigInt(100) * BigInt(10 ** 18); // 100 tokens with 18 decimals
+      console.log('Claiming rewards with params:', {
+        address: walletAddress,
+        amount: amount.toString()
+      });
+
+      await distributeReward({
+        address: CONTRACT_ADDRESSES.distributor as `0x${string}`,
+        abi: distributorABI,
+        functionName: 'distributeRewards',
+        args: [walletAddress, amount]
+      });
+    } catch (err) {
+      console.error('Error in handleClaimRewards:', err);
+      setClaimError(`Failed to claim rewards: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setClaimStatus('');
+    } finally {
+      setIsClaiming(false);
+    }
+  };
+
+  // Update the effect to handle claim receipt
+  useEffect(() => {
+    if (claimTxHashData) {
+      console.log('Claim transaction submitted:', claimTxHashData);
+      setClaimTxHash(claimTxHashData);
+      setClaimStatus('Transaction submitted to blockchain');
+    }
+
+    if (isClaimLoading) {
+      console.log('Waiting for claim confirmation...');
+      setClaimStatus('Waiting for blockchain confirmation...');
+    }
+
+    if (claimReceiptData) {
+      console.log('Claim receipt received:', claimReceiptData);
+      setClaimReceipt(claimReceiptData);
+      const success = claimReceiptData.status === 'success';
+      setClaimStatus(success ? 'Transaction confirmed! Payment successful!' : 'Transaction failed');
+    }
+
+    if (claimErrorData) {
+      console.error('Claim error:', claimErrorData);
+      setClaimError(`Transaction failed: ${claimErrorData.message}`);
+    }
+  }, [claimTxHashData, isClaimLoading, claimReceiptData, claimErrorData]);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -493,171 +676,87 @@ const Esports = () => {
 
   const handleRegisterClick = (event: Event) => {
     if (!user) {
-      alert('Please log in to register for events');
+      toast.error('Please log in to register for events');
       return;
     }
     setSelectedEvent(event);
     setShowRegistrationModal(true);
   };
 
-  const handleRegistrationSubmit = async (formData: FormData) => {
-    if (!selectedEvent || !user) return;
-
+  const handleRegistrationSubmit = async (event: Event) => {
     try {
-      console.log("Starting registration process for event:", selectedEvent.id);
-      const eventRef = doc(db, 'events', selectedEvent.id);
-      const registrationsRef = collection(eventRef, 'registrations');
-
-      // First check if user has already registered
-      const existingRegistration = doc(registrationsRef, user.uid);
-      const registrationDoc = await getDoc(existingRegistration);
-      
-      if (registrationDoc.exists()) {
-        throw new Error('You have already registered for this event');
+      if (!user) {
+        toast.error("Please log in to register for events");
+        return;
       }
 
-      // Get user data to include email
-      const userRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userRef);
-      const userData = userDoc.exists() ? userDoc.data() : null;
-      console.log("User data retrieved:", userData ? "success" : "not found");
-      const userEmail = formData.email || userData?.email || user.email;
+      const userData = await getUserData();
+      const email = userData?.email || user.email;
 
-      // Create registration document in the registrations subcollection
-      const registrationData = {
-        ...formData,
-        userId: user.uid,
-        userEmail: userEmail,
-        eventId: selectedEvent.id,
-        registeredAt: new Date(),
-        status: 'pending',
-        paymentStatus: formData.upiTransactionId ? 'pending_verification' : 'pending',
-        teamName: formData.teamName || null,
-        discordId: formData.discordId || null,
-        upiTransactionId: formData.upiTransactionId || null,
-        paymentAmount: selectedEvent.registrationFee || null,
-        paymentDate: formData.upiTransactionId ? new Date() : null
-      };
-
-      console.log("Registration data prepared:", registrationData);
-
-      try {
-        // Create or update the _info document first
-        const infoRef = doc(registrationsRef, '_info');
-        const infoDoc = await getDoc(infoRef);
-        
-        if (!infoDoc.exists()) {
-          await setDoc(infoRef, {
-            totalRegistrations: 0,
-            lastUpdated: new Date()
-          });
-        }
-
-        // Add registration document
-        await setDoc(doc(registrationsRef, user.uid), registrationData);
-        console.log("Registration document created in event subcollection");
-      } catch (permissionError) {
-        console.error("Permission error when creating registration:", permissionError);
-        
-        // Alternative approach: Update the event document directly with the registration
-        // This is a workaround for permission issues with subcollections
-        try {
-          console.log("Trying alternative registration approach...");
-          const eventData = (await getDoc(eventRef)).data() || {};
-          const registrations = eventData.registrations || [];
-          
-          // Add registration to the array
-          await updateDoc(eventRef, {
-            registrations: [...registrations, {
-              ...registrationData,
-              id: user.uid // Include user ID in the registration data
-            }],
-            registrationsCount: increment(1)
-          });
-          
-          console.log("Registration added to event document directly");
-        } catch (altError) {
-          console.error("Alternative registration approach failed:", altError);
-          throw new Error("Registration failed due to permission issues. Please contact the event organizer.");
-        }
+      if (!email) {
+        toast.error("Unable to retrieve user email");
+        return;
       }
 
-      // Update event's registration count if we haven't done it in the alternative approach
       try {
-        await updateDoc(eventRef, {
-          registrationsCount: increment(1)
+        // First attempt: Try to create registration document directly
+        await addDoc(collection(db, "events", event.id, "registrations"), {
+          userId: user.uid,
+          email: email,
+          timestamp: serverTimestamp(),
         });
-      } catch (countError) {
-        console.error("Error updating registration count:", countError);
-        // Continue anyway since the registration was created
-      }
-
-      // Update the _info document
-      try {
-        const infoRef = doc(registrationsRef, '_info');
-        await updateDoc(infoRef, {
-          totalRegistrations: increment(1),
-          lastUpdated: new Date()
-        });
-      } catch (infoError) {
-        console.error("Error updating info document:", infoError);
-        // Continue anyway since the registration was created
-      }
-
-      // Update user's profile with the registered event
-      if (userDoc.exists()) {
-        const registeredEvent = {
-          id: selectedEvent.id,
-          title: selectedEvent.title,
-          date: selectedEvent.date,
-          game: selectedEvent.game,
-          status: 'registered',
-          registeredEmail: userEmail,
-          registeredName: formData.playerName,
-          registrationFee: selectedEvent.registrationFee,
-          upiTransactionId: formData.upiTransactionId,
-          paymentStatus: formData.upiTransactionId ? 'pending_verification' : 'pending'
-        };
-        
-        console.log("Preparing to update user profile with registered event:", registeredEvent);
-        
-        try {
-          // Check if registeredEvents array exists
-          const currentRegisteredEvents = userData.registeredEvents || [];
-          
-          // Add to registeredEvents array
-          await updateDoc(userRef, {
-            registeredEvents: [...currentRegisteredEvents, registeredEvent],
-            updatedAt: new Date()
+      } catch (error) {
+        // If permission error, try alternative registration approach
+        if (error instanceof Error && error.message.includes("permission-denied")) {
+          const registrationTx = await event.contract.methods.register().send({
+            from: userData?.walletAddress,
           });
-          
-          console.log("User profile updated with registered event");
-        } catch (updateError) {
-          console.error("Error updating user profile:", updateError);
-          
-          // Try a different approach if the first one failed
-          try {
-            await setDoc(userRef, {
-              ...userData,
-              registeredEvents: userData.registeredEvents ? 
-                [...userData.registeredEvents, registeredEvent] : 
-                [registeredEvent],
-              updatedAt: new Date()
-            }, { merge: true });
-            console.log("User profile updated with registered event (using setDoc)");
-          } catch (setDocError) {
-            console.error("Error updating user profile with setDoc:", setDocError);
-            // Continue anyway since the registration was created
+
+          if (registrationTx.status !== "success") {
+            toast.error("Registration transaction failed");
+            return;
           }
+        } else {
+          throw error;
         }
       }
 
-      // Close modal on success
-      setShowRegistrationModal(false);
-      return;
-    } catch (error: any) {
-      console.error('Error registering for event:', error);
-      throw error; // Throw the error to show in the modal
+      // Update event registration count
+      const eventRef = doc(db, "events", event.id);
+      await runTransaction(db, async (transaction) => {
+        const eventDoc = await transaction.get(eventRef);
+        if (!eventDoc.exists()) {
+          throw new Error("Event does not exist!");
+        }
+
+        const currentRegistrations = eventDoc.data().registrations || 0;
+        transaction.update(eventRef, {
+          registrations: currentRegistrations + 1,
+        });
+
+        // Update _info document
+        const infoRef = doc(db, "events", event.id, "_info", "data");
+        transaction.set(infoRef, {
+          lastUpdated: serverTimestamp(),
+          registrationCount: currentRegistrations + 1,
+        }, { merge: true });
+      });
+
+      // Update user profile
+      const userRef = doc(db, "users", user.uid);
+          await updateDoc(userRef, {
+        registeredEvents: arrayUnion({
+          eventId: event.id,
+          registeredAt: serverTimestamp(),
+          eventName: event.name,
+          eventDate: event.date,
+        }),
+      });
+
+      toast.success("Successfully registered for the event!");
+    } catch (error) {
+      console.error("Registration error:", error);
+      toast.error("Failed to register for the event");
     }
   };
 
@@ -1155,6 +1254,15 @@ const Esports = () => {
             onClose={() => setSelectedEvent(null)}
           event={selectedEvent}
           onSubmit={handleRegistrationSubmit}
+          onClaimRewards={handleClaimRewards}
+          isClaiming={isClaiming}
+          isClaimLoading={isClaimLoading}
+          claimStatus={claimStatus}
+          claimError={claimError}
+          claimTxHash={claimTxHash}
+          isClaimSuccess={isClaimSuccess}
+          walletConnected={!!walletAddress}
+          claimReceipt={claimReceipt}
         />
       )}
 

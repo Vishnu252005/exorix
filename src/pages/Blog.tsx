@@ -618,15 +618,7 @@ const Blog = () => {
 
               <div className={`p-6 ${viewMode === 'list' ? 'flex-1' : ''}`}>
                 <div className="flex items-center gap-4 mb-4">
-                  <img
-                    src={post.author.avatar || 'https://via.placeholder.com/40'}
-                    alt={post.author.name}
-                    className="w-10 h-10 rounded-full ring-2 ring-indigo-500/20"
-                  />
-                  <div>
-                    <h4 className="text-white font-medium">{post.author.name}</h4>
-                    <p className="text-gray-400 text-sm">{formatDate(post.createdAt)}</p>
-                  </div>
+                  <p className="text-gray-400 text-sm">{formatDate(post.createdAt)}</p>
                 </div>
 
                 <h3 className="text-xl font-bold text-white mb-3 group-hover:text-indigo-400 transition-colors line-clamp-2">

@@ -159,11 +159,6 @@ export const createEvent = async (eventData: EventData) => {
     const user = auth.currentUser;
     if (!user) throw new Error('Not authenticated');
 
-    const userDoc = await getDoc(doc(db, 'users', user.uid));
-    const userData = userDoc.data();
-
-    if (!userData) throw new Error('User data not found');
-
     // Create the event in events collection
     const eventRef = await addDoc(collection(db, 'events'), {
       ...eventData,
@@ -174,33 +169,6 @@ export const createEvent = async (eventData: EventData) => {
       registeredUsers: [],
       status: eventData.status || 'Registration Open'
     });
-
-    // Get the created event data
-    const newEvent = {
-      id: eventRef.id,
-      title: eventData.title,
-      date: eventData.date,
-      game: eventData.game,
-      prize: eventData.prize,
-      status: eventData.status || 'Registration Open'
-    };
-
-    // Update user document with the new event in the appropriate array based on user type
-    if (userData.isAdmin) {
-      // Admin users: add to createdEvents array
-      await setDoc(doc(db, 'users', user.uid), {
-        ...userData,
-        createdEvents: [...(userData.createdEvents || []), newEvent],
-        updatedAt: Timestamp.now()
-      });
-    } else {
-      // Regular users: add to events array
-      await setDoc(doc(db, 'users', user.uid), {
-        ...userData,
-        events: [...(userData.events || []), newEvent],
-        updatedAt: Timestamp.now()
-      });
-    }
 
     return { success: true, eventId: eventRef.id };
   } catch (error: any) {

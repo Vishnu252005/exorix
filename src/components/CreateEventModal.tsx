@@ -34,6 +34,17 @@ interface CreateEventModalProps {
     organizerPhone: string;
     upiId: string;
     paymentInstructions: string;
+    registrationsCount: number;
+    createdAt: Date;
+    registrationStatus: string;
+    registrationDeadline: null;
+    maxRegistrationsPerTeam: number;
+    minTeamSize: number;
+    maxTeamSize: number;
+    registrationFields: {
+      required: string[];
+      optional: string[];
+    };
   }) => void;
 }
 
@@ -190,18 +201,30 @@ Make the suggestions different from the current title/description if they exist.
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Prepare the event data
       const eventData = {
         ...formData,
         date: new Date(formData.date),
         capacity: Number(formData.capacity),
         registrationsCount: 0,
         createdAt: new Date(),
-        image: gameImages[formData.game as keyof typeof gameImages] || gameImages['Other']
+        image: gameImages[formData.game as keyof typeof gameImages] || gameImages['Other'],
+        registrationStatus: 'open',
+        registrationDeadline: null,
+        maxRegistrationsPerTeam: 1,
+        minTeamSize: 1,
+        maxTeamSize: 5,
+        registrationFields: {
+          required: ['playerName', 'email', 'gameId', 'phoneNumber', 'upiTransactionId'],
+          optional: ['teamName', 'discordId']
+        }
       };
       
+      // Call onSubmit with the event data
       onSubmit(eventData);
     } catch (error) {
-      console.error('Error creating event:', error);
+      console.error('Error preparing event data:', error);
+      toast.error('Failed to prepare event data');
     }
   };
 

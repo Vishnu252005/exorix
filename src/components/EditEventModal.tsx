@@ -108,33 +108,40 @@ const EditEventModal: React.FC<EditEventModalProps> = ({ isOpen, onClose, onSubm
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (!eventData?.id) return;
-
-      const eventRef = doc(db, 'events', eventData.id);
-      
-      // Update the event document
-      const updatedData = {
+      // Update the event document with registration fields
+      const eventData = {
         ...formData,
         date: new Date(formData.date),
         capacity: Number(formData.capacity),
         updatedAt: new Date(),
-        image: gameImages[formData.game as keyof typeof gameImages] || gameImages['Other']
+        image: gameImages[formData.game as keyof typeof gameImages] || gameImages['Other'],
+        registrationStatus: formData.registrationStatus || 'open',
+        registrationDeadline: formData.registrationDeadline || null,
+        maxRegistrationsPerTeam: formData.maxRegistrationsPerTeam || 1,
+        minTeamSize: formData.minTeamSize || 1,
+        maxTeamSize: formData.maxTeamSize || 5,
+        registrationFields: {
+          required: ['playerName', 'email', 'gameId', 'phoneNumber', 'upiTransactionId'],
+          optional: ['teamName', 'discordId']
+        }
       };
-      
-      await updateDoc(eventRef, updatedData);
 
-      // Check if registrations subcollection exists, if not create it
-      const registrationsRef = collection(eventRef, 'registrations');
-      const infoDoc = await getDoc(doc(registrationsRef, '_info'));
-      
-      if (!infoDoc.exists()) {
-        await setDoc(doc(registrationsRef, '_info'), {
-          totalRegistrations: 0,
-          lastUpdated: new Date()
-        });
-      }
+      // Update the event document
+      await updateDoc(doc(db, 'events', eventData.id), eventData);
 
-      onSubmit(updatedData);
+      // Update the registrations/_info document
+      await updateDoc(doc(db, 'events', eventData.id, 'registrations', '_info'), {
+        lastUpdated: new Date(),
+        registrationConfig: {
+          requirePayment: !!eventData.registrationFee,
+          paymentAmount: eventData.registrationFee,
+          paymentInstructions: eventData.paymentInstructions,
+          upiId: eventData.upiId,
+          organizerPhone: eventData.organizerPhone
+        }
+      });
+
+      onSubmit(eventData);
     } catch (error) {
       console.error('Error updating event:', error);
     }
