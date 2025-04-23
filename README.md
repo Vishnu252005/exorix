@@ -24,8 +24,7 @@ Exorix aims to revolutionize the esports and gaming industry by providing an int
 `Exorix Team`
 
 ### Team Members:  
-- Vishnu (GitHub: [Vishnu252005](https://github.com/Vishnu252005) / Role: Full Stack Developer)
-- [Add other team members]
+- Vishnu (GitHub: [Vishnu252005](https://github.com/Vishnu252005) / Role: Leader)
 
 ### Your Approach:  
 - Chose this problem to address the growing need for an integrated gaming platform
