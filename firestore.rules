@@ -259,6 +259,12 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // Products collection rules
+    match /products/{product} {
+      allow read: if true;
+      allow write: if true;
+    }
+
     // Default deny all other access
     match /{document=**} {
       allow read, write: if false;

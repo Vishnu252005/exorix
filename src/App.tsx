@@ -30,6 +30,9 @@ import AdminRoute from './components/AdminRoute';
 import BaseTrackPage from './pages/BaseTrackPage';
 import Monad from './pages/Monad';
 import Chat from './pages/Chat';
+import { CartProvider } from './context/CartContext';
+import { Toaster } from 'react-hot-toast';
+import Checkout from './pages/Checkout';
 
 // Create a client
 const queryClient = new QueryClient();
@@ -88,6 +91,7 @@ const AnimatedRoutes = () => {
           <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/products" element={<Products />} />
+          <Route path="/checkout" element={<Checkout />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/join" element={<JoinUs />} />
           <Route path="/esports" element={<Esports />} />
@@ -144,21 +148,24 @@ function App() {
   };
 
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <WagmiProvider config={config}>
-          <QueryClientProvider client={queryClient}>
-            {loading ? (
-              <LoadingScreen finishLoading={finishLoading} />
-            ) : (
-              <Router>
-                <AppContent />
-              </Router>
-            )}
-          </QueryClientProvider>
-        </WagmiProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <AuthProvider>
+      <ThemeProvider>
+        <CartProvider>
+          <Toaster position="top-center" />
+          <WagmiProvider config={config}>
+            <QueryClientProvider client={queryClient}>
+              {loading ? (
+                <LoadingScreen finishLoading={finishLoading} />
+              ) : (
+                <Router>
+                  <AppContent />
+                </Router>
+              )}
+            </QueryClientProvider>
+          </WagmiProvider>
+        </CartProvider>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
 

@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from 'react';
+/** @jsxImportSource @emotion/react */
+import * as React from 'react';
+import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db, createEvent, createJob } from '../../firebase';
-import { doc, getDoc, updateDoc, collection, getDocs, query, where, addDoc, deleteDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, getDocs, query, where, addDoc, deleteDoc, setDoc, type DocumentData, Timestamp } from 'firebase/firestore';
 import {
   User,
   Mail,
@@ -34,7 +36,13 @@ import {
   Trash2,
   MapPin,
   Loader2,
-  Cpu
+  Cpu,
+  Package,
+  Tag,
+  ShoppingCart,
+  X,
+  Minus,
+  ShoppingBag
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import ProfileAvatar from '../../components/ProfileAvatar';
@@ -42,53 +50,12 @@ import CreateEventModal from '../../components/CreateEventModal';
 import CreateJobModal from '../../components/CreateJobModal';
 import CreateBlogModal from '../../components/CreateBlogModal';
 import { useAuth } from '../../context/AuthContext';
-import { Timestamp } from 'firebase/firestore';
+import { format } from 'date-fns';
 import NFTRewards from '../admin/NFTRewards';
 import { toast } from 'react-hot-toast';
-import { format } from 'date-fns';
 import EditEventModal from '../../components/EditEventModal';
-
-interface AdminData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  isAdmin: boolean;
-  createdAt: any;
-  events?: Array<{
-    id: string;
-    title: string;
-    description: string;
-    date: Timestamp;
-    location: string;
-    capacity: number;
-    game: string;
-    prize: string;
-    registrationFee: string;
-    image: string;
-    status: 'Registration Open' | 'Coming Soon' | 'Completed';
-    organizerPhone?: string;
-    upiId?: string;
-    paymentInstructions?: string;
-    creatorEmail?: string;
-    registrations?: any[];
-    registeredUsers?: string[];
-  }>;
-  jobs?: Array<{
-    id: string;
-    title: string;
-    department: string;
-    createdAt: any;
-  }>;
-  blogs?: Array<{
-    id: string;
-    title: string;
-    content: string;
-    createdAt: any;
-    likes: number;
-    comments: number;
-  }>;
-  avatar?: string;
-}
+import { css } from '@emotion/react';
+import styled from '@emotion/styled';
 
 interface AvatarStyle {
   id: string;
@@ -133,7 +100,50 @@ interface Blog {
   aiPrompt?: string;
 }
 
-const AdminProfile = () => {
+// Add Product interface
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  image: string;
+  category: 'keyboard' | 'mouse' | 'headset' | 'monitor' | 'accessories' | 'chair' | 'desk' | 'controller';
+  brand: string;
+  rating: number;
+  stock: number;
+  features: string[];
+  specifications: Record<string, string>;
+  isFeatured?: boolean;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+interface EventData {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  price: number;
+  attendees: string[];
+}
+
+interface AdminData {
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  events: EventData[];
+  isAdmin: boolean;
+}
+
+interface FormState {
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+}
+
+const AdminProfile: React.FC = () => {
   const [adminData, setAdminData] = useState<AdminData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -160,9 +170,21 @@ const AdminProfile = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
-  const [events, setEvents] = useState<Event[]>([]);
+  const [events, setEvents] = useState<EventData[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showCreateProductModal, setShowCreateProductModal] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [formData, setFormData] = useState<FormState>({
+    name: '',
+    email: '',
+    phone: '',
+    address: ''
+  });
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [cart, setCart] = useState<Array<{ product: Product; quantity: number }>>([]);
+  const [showCart, setShowCart] = useState(false);
 
   const fetchStats = async () => {
     if (!user) return;
@@ -253,23 +275,31 @@ const AdminProfile = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
+        setEventsLoading(true);
         const eventsCollection = collection(db, 'events');
         const eventsSnapshot = await getDocs(eventsCollection);
         const eventsData = eventsSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
-        })) as Event[];
-        setEvents(eventsData);
-        setEventsLoading(false);
-      } catch (err) {
-        console.error('Error fetching events:', err);
-        setError('Failed to load events');
+        }));
+        setEvents(eventsData as EventData[]);
+      } catch (error) {
+        console.error('Error fetching events:', error);
+        toast.error('Failed to load events');
+      } finally {
         setEventsLoading(false);
       }
     };
 
     fetchEvents();
   }, []);
+
+  // Add new useEffect for products
+  useEffect(() => {
+    if (activeTab === 'products') {
+      fetchProducts();
+    }
+  }, [activeTab]);
 
   const handleLogout = async () => {
     try {
@@ -509,6 +539,200 @@ const AdminProfile = () => {
     }
   };
 
+  // Add products management functions
+  const createSampleProducts = async () => {
+    try {
+      const sampleProducts = [
+        {
+          name: "Pro Gaming Mouse",
+          description: "High-precision gaming mouse with RGB lighting and programmable buttons",
+          price: 79.99,
+          image: "https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?auto=format&fit=crop&q=80&w=1000",
+          category: "mouse",
+          brand: "GameTech",
+          rating: 4.5,
+          stock: 50,
+          features: ["16000 DPI", "RGB Lighting", "8 Programmable Buttons"],
+          specifications: {
+            "Sensor": "Optical",
+            "Connection": "USB Wired",
+            "Weight": "95g"
+          },
+          isFeatured: true
+        },
+        {
+          name: "Mechanical Gaming Keyboard",
+          description: "RGB mechanical keyboard with custom switches for the ultimate gaming experience",
+          price: 129.99,
+          image: "https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&q=80&w=1000",
+          category: "keyboard",
+          brand: "GameTech",
+          rating: 4.8,
+          stock: 30,
+          features: ["Mechanical Switches", "RGB Per-Key Lighting", "Aluminum Frame"],
+          specifications: {
+            "Switch Type": "Blue",
+            "Layout": "Full Size",
+            "Backlight": "RGB"
+          },
+          isFeatured: true
+        },
+        {
+          name: "Gaming Headset Pro",
+          description: "Premium gaming headset with 7.1 surround sound and noise-canceling mic",
+          price: 149.99,
+          image: "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?auto=format&fit=crop&q=80&w=1000",
+          category: "headset",
+          brand: "AudioTech",
+          rating: 4.7,
+          stock: 25,
+          features: ["7.1 Surround Sound", "Noise-Canceling Mic", "Memory Foam Earpads"],
+          specifications: {
+            "Driver": "50mm",
+            "Frequency Response": "20Hz-20kHz",
+            "Connection": "USB/3.5mm"
+          },
+          isFeatured: true
+        }
+      ];
+
+      console.log('Creating sample products...');
+      for (const product of sampleProducts) {
+        const now = Timestamp.now();
+        await addDoc(collection(db, 'products'), {
+          ...product,
+          createdAt: now,
+          updatedAt: now
+        });
+      }
+      console.log('Sample products created successfully');
+    } catch (error) {
+      console.error('Error creating sample products:', error);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      setProductsLoading(true);
+      console.log('Fetching products from Firestore...');
+      const productsCollection = collection(db, 'products');
+      const productsSnapshot = await getDocs(productsCollection);
+      const productsData = productsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Product[];
+      console.log('Fetched products:', productsData);
+      
+      if (productsData.length === 0) {
+        console.log('No products found, creating samples...');
+        await createSampleProducts();
+        // Fetch products again after creating samples
+        const newSnapshot = await getDocs(productsCollection);
+        const newProductsData = newSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Product[];
+        setProducts(newProductsData);
+      } else {
+        setProducts(productsData);
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      toast.error('Failed to load products');
+    } finally {
+      setProductsLoading(false);
+    }
+  };
+
+  const handleCreateProduct = async (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      const productsCollection = collection(db, 'products');
+      const now = Timestamp.now();
+      await addDoc(productsCollection, {
+        ...productData,
+        createdAt: now,
+        updatedAt: now
+      });
+      toast.success('Product created successfully!');
+      await fetchProducts();
+    } catch (error) {
+      console.error('Error creating product:', error);
+      toast.error('Failed to create product');
+    }
+  };
+
+  const handleDeleteProduct = async (productId: string) => {
+    if (!window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, 'products', productId));
+      toast.success('Product deleted successfully!');
+      await fetchProducts();
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      toast.error('Failed to delete product');
+    }
+  };
+
+  const handleEditProduct = async (productData: Product) => {
+    try {
+      const productRef = doc(db, 'products', productData.id);
+      await updateDoc(productRef, {
+        ...productData,
+        updatedAt: Timestamp.now()
+      });
+      toast.success('Product updated successfully!');
+      await fetchProducts();
+      setSelectedProduct(null);
+    } catch (error) {
+      console.error('Error updating product:', error);
+      toast.error('Failed to update product');
+    }
+  };
+
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev: FormState) => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handlePrevStateChange = (prev: FormState): FormState => ({
+    ...prev,
+  });
+
+  const handleEventPrevStateChange = (prev: EventData[]): EventData[] => [...prev];
+
+  const calculateTotalRevenue = (events: EventData[]): number => {
+    return events.reduce((acc: number, event: EventData) => acc + event.price, 0);
+  };
+
+  const handleEventDelete = (event: EventData): void => {
+    // ... existing code ...
+  };
+
+  const handleTabChange = (tab: string): void => {
+    setActiveTab(tab);
+  };
+
+  const handleAddToCart = (product: Product) => {
+    setCart(prevCart => {
+      const existingItem = prevCart.find(item => item.product.id === product.id);
+      if (existingItem) {
+        return prevCart.map(item =>
+          item.product.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      }
+      return [...prevCart, { product, quantity: 1 }];
+    });
+    toast.success(`${product.name} added to cart!`);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0A0A0B]">
@@ -555,6 +779,44 @@ const AdminProfile = () => {
 
   return (
     <div className="min-h-screen bg-[#0A0A0B] text-white flex pt-24">
+      {/* Header/Navigation */}
+      <div className="fixed top-0 left-0 right-0 bg-gray-900/50 backdrop-blur-sm border-b border-gray-700/50 z-50">
+        <div className="container mx-auto px-6">
+          <div className="flex items-center justify-between h-24">
+            {/* Left side - Navigation Links */}
+            <nav className="flex items-center space-x-8">
+              <a href="/" className="text-white hover:text-indigo-400 transition-colors">Home</a>
+              <a href="/about" className="text-white hover:text-indigo-400 transition-colors">About</a>
+              <a href="/services" className="text-white hover:text-indigo-400 transition-colors">Services</a>
+              <a href="/portfolio" className="text-white hover:text-indigo-400 transition-colors">Portfolio</a>
+              <a href="/products" className="text-indigo-400">Products</a>
+            </nav>
+
+            {/* Right side - Cart and Profile */}
+            <div className="flex items-center space-x-6">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowCart(true)}
+                className="relative p-2 text-white hover:text-indigo-400 transition-colors"
+                title="View Cart"
+              >
+                <ShoppingCart className="w-6 h-6" />
+                {cart.length > 0 && (
+                  <div className="absolute -top-2 -right-2 bg-indigo-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                    {cart.reduce((acc, item) => acc + item.quantity, 0)}
+                  </div>
+                )}
+              </motion.button>
+              <button className="flex items-center space-x-2 text-white hover:text-indigo-400 transition-colors">
+                <User className="w-6 h-6" />
+                <span>Profile</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Sidebar */}
       <div className="fixed left-0 top-24 bottom-0 w-64 bg-gray-800/30 backdrop-blur-sm border-r border-gray-700/50 p-6 overflow-y-auto">
         <div className="flex items-center space-x-4 mb-8">
@@ -595,7 +857,7 @@ const AdminProfile = () => {
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => setActiveTab('dashboard')}
+            onClick={() => handleTabChange('dashboard')}
             className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
               activeTab === 'dashboard' ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700/50'
             }`}
@@ -607,7 +869,7 @@ const AdminProfile = () => {
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => setActiveTab('events')}
+            onClick={() => handleTabChange('events')}
             className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
               activeTab === 'events' ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700/50'
             }`}
@@ -619,19 +881,19 @@ const AdminProfile = () => {
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => setActiveTab('jobs')}
+            onClick={() => handleTabChange('jobs')}
             className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
               activeTab === 'jobs' ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700/50'
             }`}
-                >
-                  <Briefcase className="w-5 h-5" />
+          >
+            <Briefcase className="w-5 h-5" />
             <span>Jobs</span>
           </motion.button>
 
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => setActiveTab('settings')}
+            onClick={() => handleTabChange('settings')}
             className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
               activeTab === 'settings' ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700/50'
             }`}
@@ -643,7 +905,7 @@ const AdminProfile = () => {
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => setActiveTab('nft-rewards')}
+            onClick={() => handleTabChange('nft-rewards')}
             className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
               activeTab === 'nft-rewards' ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700/50'
             }`}
@@ -651,20 +913,32 @@ const AdminProfile = () => {
             <Medal className="w-5 h-5" />
             <span>NFT Rewards</span>
           </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => handleTabChange('products')}
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+              activeTab === 'products' ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700/50'
+            }`}
+          >
+            <Package className="w-5 h-5" />
+            <span>Products</span>
+          </motion.button>
         </nav>
 
         <div className="mt-auto pt-6 border-t border-gray-700/50">
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-                  onClick={handleLogout}
+            onClick={handleLogout}
             className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
-                >
-                  <LogOut className="w-5 h-5" />
-                  <span>Logout</span>
+          >
+            <LogOut className="w-5 h-5" />
+            <span>Logout</span>
           </motion.button>
-              </div>
-            </div>
+        </div>
+      </div>
 
       {/* Main Content */}
       <div className="flex-1 ml-64 p-8">
@@ -676,6 +950,7 @@ const AdminProfile = () => {
             {activeTab === 'jobs' && 'Jobs'}
             {activeTab === 'settings' && 'Settings'}
             {activeTab === 'nft-rewards' && 'NFT Rewards'}
+            {activeTab === 'products' && 'Products'}
           </h1>
           <div className="flex items-center space-x-4">
             <div className="relative">
@@ -694,7 +969,7 @@ const AdminProfile = () => {
               <Bell className="w-5 h-5 text-gray-300" />
             </motion.button>
           </div>
-                  </div>
+        </div>
 
         {/* Dashboard View */}
         {activeTab === 'dashboard' && (
@@ -923,7 +1198,7 @@ const AdminProfile = () => {
         )}
 
         {/* Events View */}
-          {activeTab === 'events' && (
+        {activeTab === 'events' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
@@ -940,7 +1215,7 @@ const AdminProfile = () => {
                 <span>Create Event</span>
               </motion.button>
             </div>
-              
+            
             <div className="bg-white rounded-lg shadow-md p-6 mb-8">
               <h2 className="text-2xl font-semibold mb-4">All Events</h2>
               <div className="overflow-x-auto">
@@ -994,10 +1269,10 @@ const AdminProfile = () => {
               </div>
             </div>
           </div>
-          )}
+        )}
 
         {/* Jobs View */}
-          {activeTab === 'jobs' && (
+        {activeTab === 'jobs' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
@@ -1007,14 +1282,14 @@ const AdminProfile = () => {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowCreateJobModal(true)}
+                onClick={() => setShowCreateJobModal(true)}
                 className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
               >
                 <PlusCircle className="w-5 h-5" />
                 <span>Create Job</span>
               </motion.button>
-              </div>
-              
+            </div>
+            
             <div className="grid gap-6">
               {adminData.jobs && adminData.jobs.map((job) => (
                 <motion.div
@@ -1028,19 +1303,19 @@ const AdminProfile = () => {
                       <p className="text-sm text-gray-400 mt-1">
                         {job.department} • Created on {job.createdAt.toDate().toLocaleDateString()}
                       </p>
-                            </div>
+                    </div>
                     <div className="flex items-center space-x-4">
                       <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
-                                onClick={() => navigate(`/jobs/${job.id}/edit`)}
+                        onClick={() => navigate(`/jobs/${job.id}/edit`)}
                         className="text-indigo-400 hover:text-indigo-300"
                         title="Edit Job"
-                              >
-                                <Edit3 className="w-5 h-5" />
+                      >
+                        <Edit3 className="w-5 h-5" />
                       </motion.button>
                     </div>
-                            </div>
+                  </div>
                 </motion.div>
               ))}
             </div>
@@ -1088,13 +1363,245 @@ const AdminProfile = () => {
                 </div>
               </div>
             </div>
-            </div>
-          )}
+          </div>
+        )}
 
         {/* NFT Rewards View */}
         {activeTab === 'nft-rewards' && (
           <div className="space-y-6">
             <NFTRewards />
+          </div>
+        )}
+
+        {/* Products View */}
+        {activeTab === 'products' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-bold">Products</h2>
+                <p className="text-gray-400 text-sm mt-1">Manage your product catalog</p>
+              </div>
+              <div className="flex items-center space-x-4">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowCart(true)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 text-white rounded-lg hover:bg-gray-700/50 transition-colors relative"
+                  title="View Cart"
+                >
+                  <ShoppingCart className="w-5 h-5" />
+                  <span>Cart</span>
+                  {cart.length > 0 && (
+                    <div className="absolute -top-2 -right-2 bg-indigo-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                      {cart.reduce((acc, item) => acc + item.quantity, 0)}
+                    </div>
+                  )}
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowCreateProductModal(true)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span>Add Product</span>
+                </motion.button>
+              </div>
+            </div>
+
+            {/* Products Grid */}
+            {productsLoading ? (
+              <div className="text-center py-8">
+                <Loader2 className="w-8 h-8 text-indigo-400 animate-spin mx-auto" />
+                <p className="mt-2 text-gray-400">Loading products...</p>
+              </div>
+            ) : products.length === 0 ? (
+              <div className="text-center py-8">
+                <Package className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-white">No products yet</h3>
+                <p className="mt-1 text-sm text-gray-400">
+                  Get started by adding your first product.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {products.map((product) => (
+                  <motion.div
+                    key={product.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-gray-800/30 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50"
+                  >
+                    <div className="relative aspect-video rounded-lg overflow-hidden mb-4">
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                      />
+                      {product.isFeatured && (
+                        <div className="absolute top-2 left-2">
+                          <span className="bg-indigo-600 text-white px-2 py-1 rounded-full text-xs">
+                            Featured
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <h3 className="text-lg font-medium text-white mb-2">{product.name}</h3>
+                    <p className="text-sm text-gray-400 mb-4">{product.description}</p>
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-2xl font-bold text-white">${product.price}</span>
+                      <span className={`text-sm ${product.stock > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleDeleteProduct(product.id)}
+                          className="text-red-400 hover:text-red-300 transition-colors"
+                          title="Delete product"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => setSelectedProduct(product)}
+                          className="text-indigo-400 hover:text-indigo-300 transition-colors"
+                          title="Edit product"
+                        >
+                          <Edit3 className="w-5 h-5" />
+                        </button>
+                      </div>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleAddToCart(product)}
+                        disabled={product.stock === 0}
+                        className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
+                          product.stock > 0
+                            ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                            : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                        }`}
+                      >
+                        <ShoppingCart className="w-4 h-4" />
+                        <span>Add to Cart</span>
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+
+            {/* Cart Modal */}
+            {showCart && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-gray-900 rounded-xl p-6 max-w-2xl w-full mx-4 space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-bold text-white">Shopping Cart</h3>
+                    <button
+                      onClick={() => setShowCart(false)}
+                      className="text-gray-400 hover:text-white"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+                  
+                  {cart.length === 0 ? (
+                    <div className="text-center py-8">
+                      <ShoppingCart className="w-12 h-12 text-gray-400 mx-auto" />
+                      <p className="mt-2 text-gray-400">Your cart is empty</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-4">
+                        {cart.map(({ product, quantity }) => (
+                          <div key={product.id} className="flex items-center justify-between bg-gray-800/50 p-4 rounded-lg">
+                            <div className="flex items-center space-x-4">
+                              <img
+                                src={product.image}
+                                alt={product.name}
+                                className="w-16 h-16 object-cover rounded-lg"
+                              />
+                              <div>
+                                <h4 className="text-white font-medium">{product.name}</h4>
+                                <p className="text-gray-400">${product.price}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-4">
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  onClick={() => {
+                                    if (quantity > 1) {
+                                      setCart(prevCart =>
+                                        prevCart.map(item =>
+                                          item.product.id === product.id
+                                            ? { ...item, quantity: item.quantity - 1 }
+                                            : item
+                                        )
+                                      );
+                                    } else {
+                                      setCart(prevCart =>
+                                        prevCart.filter(item => item.product.id !== product.id)
+                                      );
+                                    }
+                                  }}
+                                  className="text-gray-400 hover:text-white"
+                                >
+                                  <Minus className="w-4 h-4" />
+                                </button>
+                                <span className="text-white w-8 text-center">{quantity}</span>
+                                <button
+                                  onClick={() => {
+                                    if (quantity < product.stock) {
+                                      setCart(prevCart =>
+                                        prevCart.map(item =>
+                                          item.product.id === product.id
+                                            ? { ...item, quantity: item.quantity + 1 }
+                                            : item
+                                        )
+                                      );
+                                    }
+                                  }}
+                                  className="text-gray-400 hover:text-white"
+                                  disabled={quantity >= product.stock}
+                                >
+                                  <Plus className="w-4 h-4" />
+                                </button>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setCart(prevCart =>
+                                    prevCart.filter(item => item.product.id !== product.id)
+                                  );
+                                }}
+                                className="text-red-400 hover:text-red-300"
+                              >
+                                <Trash2 className="w-5 h-5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="border-t border-gray-700 pt-4">
+                        <div className="flex items-center justify-between text-white mb-4">
+                          <span className="text-lg">Total:</span>
+                          <span className="text-2xl font-bold">
+                            ${cart.reduce((acc, { product, quantity }) => acc + product.price * quantity, 0).toFixed(2)}
+                          </span>
+                        </div>
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          className="w-full py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center space-x-2"
+                        >
+                          <ShoppingBag className="w-5 h-5" />
+                          <span>Checkout</span>
+                        </motion.button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1196,6 +1703,205 @@ const AdminProfile = () => {
           eventData={selectedEvent}
         />
       )}
+
+      {/* Create Product Modal */}
+      <CreateProductModal
+        isOpen={showCreateProductModal}
+        onClose={() => setShowCreateProductModal(false)}
+        onSubmit={handleCreateProduct}
+      />
+
+      {/* Edit Product Modal */}
+      {selectedProduct && (
+        <EditProductModal
+          isOpen={!!selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+          onSubmit={handleEditProduct}
+          product={selectedProduct}
+        />
+      )}
+    </div>
+  );
+};
+
+const CreateProductModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+}> = ({ isOpen, onClose, onSubmit }) => {
+  const [formData, setFormData] = useState<FormState>({
+    name: '',
+    email: '',
+    phone: '',
+    address: ''
+  });
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleFeatureChange = (index: number, value: string) => {
+    setFormData((prevState: FormState) => {
+      const newFeatures = [...prevState.features];
+      newFeatures[index] = value;
+      return {
+        ...prevState,
+        features: newFeatures
+      };
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    await onSubmit(formData);
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-gray-900 rounded-xl p-6 max-w-2xl w-full mx-4 space-y-6">
+        <h3 className="text-xl font-bold text-white">Create New Product</h3>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* ... rest of the form content ... */}
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const EditProductModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (productData: Product) => Promise<void>;
+  product: Product;
+}> = ({ isOpen, onClose, onSubmit, product }) => {
+  const [formData, setFormData] = useState(product);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    await onSubmit(formData);
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-gray-900 rounded-xl p-6 max-w-2xl w-full mx-4 space-y-6">
+        <h3 className="text-xl font-bold text-white">Edit Product</h3>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="name" className="text-sm text-gray-400">Product Name</label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="description" className="text-sm text-gray-400">Description</label>
+            <textarea
+              id="description"
+              name="description"
+              value={formData.description}
+              onChange={handleInputChange}
+              className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+              required
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label htmlFor="price" className="text-sm text-gray-400">Price</label>
+              <input
+                type="number"
+                id="price"
+                name="price"
+                value={formData.price}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="stock" className="text-sm text-gray-400">Stock</label>
+              <input
+                type="number"
+                id="stock"
+                name="stock"
+                value={formData.stock}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+                required
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="image" className="text-sm text-gray-400">Image URL</label>
+            <input
+              type="url"
+              id="image"
+              name="image"
+              value={formData.image}
+              onChange={handleInputChange}
+              className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="category" className="text-sm text-gray-400">Category</label>
+            <select
+              id="category"
+              name="category"
+              value={formData.category}
+              onChange={handleInputChange}
+              className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+              required
+            >
+              <option value="keyboard">Keyboard</option>
+              <option value="mouse">Mouse</option>
+              <option value="headset">Headset</option>
+              <option value="monitor">Monitor</option>
+              <option value="accessories">Accessories</option>
+              <option value="chair">Chair</option>
+              <option value="desk">Desk</option>
+              <option value="controller">Controller</option>
+            </select>
+          </div>
+          <div className="flex justify-end space-x-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            >
+              Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

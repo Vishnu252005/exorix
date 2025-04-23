@@ -80,6 +80,32 @@ interface JobData {
   description: string;
 }
 
+interface OrderItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  image: string;
+}
+
+interface OrderData {
+  items: OrderItem[];
+  totalAmount: number;
+  paymentMethod: 'card' | 'crypto';
+  status: 'pending' | 'completed' | 'failed';
+  transactionHash?: string;
+  shippingAddress?: {
+    name: string;
+    email: string;
+    address: string;
+    city: string;
+    country: string;
+    zipCode: string;
+  };
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
 // Auth functions
 export const signUp = async (email: string, password: string, firstName: string, lastName: string) => {
   try {
@@ -364,4 +390,52 @@ export const createJob = async (jobData: JobData) => {
   }
 };
 
-// Add the placeOrder function
+export const placeOrder = async (orderData: Omit<OrderData, 'createdAt' | 'updatedAt'>) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error('Not authenticated');
+
+    // Get user data
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    const userData = userDoc.data();
+
+    if (!userData) throw new Error('User data not found');
+
+    // Create the order in orders collection
+    const orderRef = await addDoc(collection(db, 'orders'), {
+      ...orderData,
+      userId: user.uid,
+      userEmail: user.email,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    });
+
+    // Get the created order data
+    const newOrder = {
+      id: orderRef.id,
+      totalAmount: orderData.totalAmount,
+      status: orderData.status,
+      paymentMethod: orderData.paymentMethod,
+      createdAt: Timestamp.now()
+    };
+
+    // Update user document with the new order
+    await setDoc(doc(db, 'users', user.uid), {
+      ...userData,
+      orders: [...(userData.orders || []), newOrder],
+      updatedAt: Timestamp.now()
+    });
+
+    return { 
+      success: true, 
+      orderId: orderRef.id,
+      message: 'Order placed successfully!'
+    };
+  } catch (error: any) {
+    console.error('Error placing order:', error);
+    return { 
+      success: false, 
+      error: error.message 
+    };
+  }
+};

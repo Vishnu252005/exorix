@@ -137,9 +137,9 @@ const Home = () => {
       tournaments: 'Weekly'
     },
     {
-      name: 'Fortnite',
-      image: 'https://cdn1.epicgames.com/offer/fn/23BR_C4S1_EGS_Launcher_Blade_2560x1440_2560x1440-437d0424d977f7bfa4c494f3248f4147',
-      players: '35K+',
+      name: 'PUBG Mobile',
+      image: 'https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?q=80&w=2070&auto=format&fit=crop',
+      players: '40K+',
       tournaments: 'Daily'
     }
   ];
@@ -173,19 +173,19 @@ const Home = () => {
       type: 'Achievement',
       title: 'New Champion Crowned',
       description: 'Team Phoenix wins the Exorix Championship Series',
-      image: 'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?q=80&w=2070&auto=format&fit=crop'
+      image: 'https://images.unsplash.com/photo-1560253023-3ec5d502959f?q=80&w=2070&auto=format&fit=crop'
     },
     {
       type: 'Stream',
       title: 'Pro Player Stream',
       description: 'Watch top-ranked player live on Twitch',
-      image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=2071&auto=format&fit=crop'
+      image: 'https://images.unsplash.com/photo-1561736778-92e52a7769ef?q=80&w=2070&auto=format&fit=crop'
     },
     {
       type: 'Community',
       title: 'Community Tournament',
       description: 'Join our weekly community tournament',
-      image: 'https://images.unsplash.com/photo-1542751110-97427bbecf20?q=80&w=2084&auto=format&fit=crop'
+      image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070&auto=format&fit=crop'
     }
   ];
 
@@ -194,21 +194,21 @@ const Home = () => {
       name: 'ProGamer123',
       game: 'VALORANT',
       viewers: '12.5K',
-      image: 'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?q=80&w=2070&auto=format&fit=crop',
+      image: 'https://images.unsplash.com/photo-1593305841991-05c297ba4575?q=80&w=2070&auto=format&fit=crop',
       status: 'Live'
     },
     {
       name: 'NinjaWarrior',
       game: 'Fortnite',
       viewers: '8.2K',
-      image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=2071&auto=format&fit=crop',
+      image: 'https://images.unsplash.com/photo-1586182987320-4f376d39d787?q=80&w=2070&auto=format&fit=crop',
       status: 'Live'
     },
     {
       name: 'PixelMaster',
       game: 'League of Legends',
       viewers: '15.7K',
-      image: 'https://images.unsplash.com/photo-1542751110-97427bbecf20?q=80&w=2084&auto=format&fit=crop',
+      image: 'https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf?q=80&w=2070&auto=format&fit=crop',
       status: 'Live'
     }
   ];
@@ -220,7 +220,7 @@ const Home = () => {
       game: 'VALORANT',
       prize: '$25,000',
       teams: '32',
-      image: 'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?q=80&w=2070&auto=format&fit=crop'
+      image: 'https://images.unsplash.com/photo-1542332213-9b5a5a3fad35?q=80&w=2070&auto=format&fit=crop'
     },
     {
       title: 'Global Esports Cup',
@@ -228,7 +228,7 @@ const Home = () => {
       game: 'League of Legends',
       prize: '$50,000',
       teams: '16',
-      image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=2071&auto=format&fit=crop'
+      image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070&auto=format&fit=crop'
     },
     {
       title: 'Pro Series Finals',
@@ -236,7 +236,7 @@ const Home = () => {
       game: 'CS:GO',
       prize: '$30,000',
       teams: '24',
-      image: 'https://images.unsplash.com/photo-1542751110-97427bbecf20?q=80&w=2084&auto=format&fit=crop'
+      image: 'https://images.unsplash.com/photo-1593305841991-05c297ba4575?q=80&w=2070&auto=format&fit=crop'
     }
   ];
 
