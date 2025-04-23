@@ -8,7 +8,7 @@
 
 ## 📌 Problem Statement
 
-**Problem Statement 7 – Transform the Future of Rural Commerce**
+**Problem Statement 1 – Weave AI magic with Groq**
 
 ---
 
@@ -46,10 +46,10 @@ Exorix aims to revolutionize the esports and gaming industry by providing an int
 ### Sponsor Technologies Used:
 - ✅ **Groq:** Used for AI-powered content generation and recommendations
 - ✅ **Monad:** Implemented for secure transactions and rewards
-- ✅ **Fluvio:** Real-time event updates and notifications
+- [ ] **Fluvio:** Real-time event updates and notifications
 - ✅ **Base:** Smart wallet integration for payments
-- ✅ **Screenpipe:** Analytics for user engagement
-- ✅ **Stellar:** Payment processing and token rewards
+- [ ] **Screenpipe:** Analytics for user engagement
+- [ ] **Stellar:** Payment processing and token rewards
 
 ---
 
