@@ -12,6 +12,8 @@
   "dependencies": {
     "@coinbase/onchainkit": "^0.38.7",
     "@fluvio/client": "^0.14.9",
+    "@react-three/drei": "^9.97.0",
+    "@react-three/fiber": "^8.15.16",
     "@stellar/stellar-sdk": "^13.2.0",
     "@tanstack/react-query": "^5.74.4",
     "@types/uuid": "^10.0.0",
@@ -28,6 +30,7 @@
     "react-quill": "^2.0.0",
     "react-router-dom": "^6.30.0",
     "stellar-sdk": "^13.2.0",
+    "three": "^0.161.0",
     "uuid": "^11.1.0",
     "viem": "^2.27.2",
     "wagmi": "^2.14.16"

@@ -1,4 +1,4 @@
-import React, { useState, useRef, Suspense } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Keyboard,
@@ -22,8 +22,6 @@ import {
   RotateCw,
   Bell
 } from 'lucide-react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Stage } from '@react-three/drei';
 import { toast } from 'react-hot-toast';
 
 interface ProductVariant {
@@ -171,7 +169,6 @@ const Products = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [showQuickView, setShowQuickView] = useState<string | null>(null);
-  const [show3DView, setShow3DView] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [isNotifying, setIsNotifying] = useState<Set<string>>(new Set());
 
@@ -251,7 +248,6 @@ const Products = () => {
     const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
       product.variants?.[0] || null
     );
-    const [show3D, setShow3D] = useState(false);
 
     return (
       <motion.div
@@ -292,35 +288,11 @@ const Products = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="space-y-6">
               <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-900">
-                {show3D && product.model3D ? (
-                  <Suspense fallback={
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <RotateCw className="w-8 h-8 text-gray-400 animate-spin" />
-                    </div>
-                  }>
-                    <Canvas>
-                      <Stage environment="city" intensity={0.6}>
-                        <OrbitControls enableZoom={true} autoRotate />
-                        {/* 3D model would be loaded here */}
-                      </Stage>
-                    </Canvas>
-                  </Suspense>
-                ) : (
-                  <img
-                    src={selectedVariant?.images?.[0] || product.image}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                  />
-                )}
-                {product.model3D && (
-                  <button
-                    onClick={() => setShow3D(!show3D)}
-                    className="absolute bottom-4 right-4 p-2 bg-gray-900/80 rounded-lg hover:bg-gray-800/80 transition-colors"
-                    aria-label="Toggle 3D view"
-                  >
-                    <Cube className="w-5 h-5 text-gray-300" />
-                  </button>
-                )}
+                <img
+                  src={selectedVariant?.images?.[0] || product.image}
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                />
               </div>
 
               {product.variants && (
@@ -546,6 +518,7 @@ const Products = () => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
+      whileHover={{ scale: 1.02 }}
       className="group bg-gray-800/30 backdrop-blur-sm rounded-xl overflow-hidden border border-gray-700/50 hover:border-indigo-500/50 transition-all duration-300"
     >
       <div className="aspect-square overflow-hidden relative">
@@ -554,64 +527,86 @@ const Products = () => {
           alt={product.name}
           className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
         />
-        <div className="absolute top-4 right-4 flex space-x-2">
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowQuickView(product.id);
-            }}
-            className="p-2 bg-gray-900/80 rounded-full hover:bg-gray-800/80 transition-colors"
-            aria-label="Quick view"
-          >
-            <Eye className="w-5 h-5 text-gray-300" />
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleWishlist(product.id);
-            }}
-            className={`p-2 rounded-full transition-colors ${
-              wishlist.includes(product.id)
-                ? 'bg-pink-600 text-white'
-                : 'bg-gray-900/80 text-gray-300 hover:bg-gray-800/80'
-            }`}
-            aria-label={wishlist.includes(product.id) ? 'Remove from wishlist' : 'Add to wishlist'}
-          >
-            <Heart className={`w-5 h-5 ${wishlist.includes(product.id) ? 'fill-current' : ''}`} />
-          </motion.button>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        
+        {/* Quick Actions Overlay */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <div className="flex flex-col items-center space-y-4">
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setSelectedProduct(product)}
+              className="px-4 py-2 bg-indigo-600/90 text-white rounded-lg hover:bg-indigo-500/90 transition-colors flex items-center space-x-2"
+            >
+              <Eye className="w-5 h-5" />
+              <span>View Details</span>
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => toggleWishlist(product.id)}
+              className={`p-2 rounded-full transition-colors ${
+                wishlist.includes(product.id)
+                  ? 'bg-pink-600 text-white'
+                  : 'bg-gray-900/80 text-gray-300 hover:bg-gray-800/80'
+              }`}
+            >
+              <Heart className={`w-5 h-5 ${wishlist.includes(product.id) ? 'fill-current' : ''}`} />
+            </motion.button>
+          </div>
+        </div>
+
+        {/* Category Badge */}
+        <div className="absolute top-4 left-4">
+          <span className="px-3 py-1 bg-indigo-600/90 text-white text-sm rounded-full">
+            {product.category}
+          </span>
+        </div>
+
+        {/* Stock Status */}
+        <div className="absolute top-4 right-4">
+          <span className={`px-3 py-1 text-sm rounded-full ${
+            product.stock > 0 
+              ? 'bg-green-600/90 text-white' 
+              : 'bg-red-600/90 text-white'
+          }`}>
+            {product.stock > 0 ? 'In Stock' : 'Out of Stock'}
+          </span>
         </div>
       </div>
+
       <div className="p-6">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-lg font-bold text-white group-hover:text-indigo-400 transition-colors">
             {product.name}
           </h3>
-          {product.model3D && (
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setShow3DView(true)}
-              className="p-2 bg-gray-700/50 rounded-lg hover:bg-gray-600/50 transition-colors"
-              aria-label="View 3D model"
-            >
-              <Cube className="w-5 h-5 text-gray-300" />
-            </motion.button>
-          )}
-        </div>
-        <p className="text-sm text-gray-400 mb-4 line-clamp-2">
-          {product.description}
-        </p>
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-2xl font-bold text-white">${product.price}</span>
           <div className="flex items-center text-yellow-400">
             <Star className="w-5 h-5 fill-current" />
             <span className="ml-1 text-sm">{product.rating}</span>
           </div>
         </div>
+
+        <p className="text-sm text-gray-400 mb-4 line-clamp-2">
+          {product.description}
+        </p>
+
+        <div className="flex items-center justify-between mb-4">
+          <div className="space-y-1">
+            <span className="text-2xl font-bold text-white">${product.price}</span>
+            <p className="text-xs text-gray-400">Free shipping</p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => shareProduct(product)}
+              className="p-2 bg-gray-700/50 rounded-lg hover:bg-gray-600/50 transition-colors"
+            >
+              <Share2 className="w-5 h-5 text-gray-300" />
+            </motion.button>
+          </div>
+        </div>
+
         <div className="flex items-center space-x-2">
           {product.stock > 0 ? (
             <motion.button
@@ -634,15 +629,6 @@ const Products = () => {
               <span>{isNotifying.has(product.id) ? 'Cancel Notification' : 'Notify Me'}</span>
             </motion.button>
           )}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => shareProduct(product)}
-            className="p-2 bg-gray-700/50 rounded-lg hover:bg-gray-600/50 transition-colors"
-            aria-label="Share product"
-          >
-            <Share2 className="w-5 h-5 text-gray-300" />
-          </motion.button>
         </div>
       </div>
     </motion.div>
