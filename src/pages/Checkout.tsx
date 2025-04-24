@@ -107,6 +107,11 @@ const Checkout = () => {
     }));
   };
 
+  // Calculate total amount from cart items
+  const calculateTotal = () => {
+    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+  };
+
   const handleCryptoPayment = async () => {
     if (!address) {
       setError('Please connect your wallet first');
@@ -119,17 +124,14 @@ const Checkout = () => {
       setMinting(true);
       console.log('Starting payment...');
       
-      const amount = BigInt(100) * BigInt(10 ** 18); // 100 tokens with 18 decimals
-      console.log('Processing payment with params:', {
-        address: address,
-        amount: amount.toString()
-      });
+      const totalAmount = calculateTotal();
+      const amountInTokens = BigInt(Math.floor(totalAmount)) * BigInt(10 ** 18); // Convert to token amount with 18 decimals
 
       await distributeReward({
         address: CONTRACT_ADDRESSES.distributor as `0x${string}`,
         abi: distributorABI,
         functionName: 'distributeRewards',
-        args: [address, amount]
+        args: [address, amountInTokens]
       });
 
       // Don't show success until transaction is confirmed
@@ -184,7 +186,7 @@ const Checkout = () => {
                 quantity: item.quantity,
                 image: item.image
               })),
-              totalAmount: 0, // Free minting
+              totalAmount: calculateTotal(),
               paymentMethod: 'crypto',
               status: 'completed',
               transactionHash: claimTxHashData,
@@ -328,7 +330,7 @@ const Checkout = () => {
             <div className="flex items-center justify-between mb-6">
               <span className="text-gray-400">Registration Fee</span>
               <span className="text-xl font-bold text-white">
-                100 Tokens
+                ${calculateTotal().toFixed(2)}
               </span>
             </div>
             <motion.button
@@ -346,7 +348,7 @@ const Checkout = () => {
               ) : (
                 <>
                   <CreditCard className="w-5 h-5" />
-                  <span>Pay Registration Fee</span>
+                  <span>Pay Registration Fee (${calculateTotal().toFixed(2)})</span>
                 </>
               )}
             </motion.button>

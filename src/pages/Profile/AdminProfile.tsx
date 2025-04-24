@@ -166,6 +166,7 @@ interface Order {
     country: string;
     zipCode: string;
   };
+  userEmail: string;
 }
 
 const AdminProfile: React.FC = () => {
@@ -334,10 +335,30 @@ const AdminProfile: React.FC = () => {
       setOrdersLoading(true);
       const ordersRef = collection(db, 'orders');
       const ordersSnapshot = await getDocs(ordersRef);
-      const ordersData = ordersSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Order[];
+      
+      // Fetch all orders with their user data
+      const ordersData = await Promise.all(ordersSnapshot.docs.map(async (doc) => {
+        const orderData = doc.data();
+        
+        // Get user data if userId exists
+        let userEmail = 'Unknown';
+        if (orderData.userId) {
+          try {
+            const userDoc = await getDoc(doc(db, 'users', orderData.userId));
+            if (userDoc.exists()) {
+              userEmail = userDoc.data().email || 'Unknown';
+            }
+          } catch (err) {
+            console.error('Error fetching user data:', err);
+          }
+        }
+
+        return {
+          id: doc.id,
+          ...orderData,
+          userEmail,
+        } as Order;
+      }));
 
       // Sort orders by creation date, handling undefined or invalid dates
       const sortedOrders = ordersData.sort((a, b) => {
@@ -1682,11 +1703,9 @@ const AdminProfile: React.FC = () => {
         {/* Add Orders View */}
         {activeTab === 'orders' && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-bold">All Orders</h2>
-                <p className="text-gray-400 text-sm mt-1">Manage and track customer orders</p>
-              </div>
+            <div>
+              <h2 className="text-2xl font-bold text-white">All Orders</h2>
+              <p className="text-gray-400 text-sm mt-1">Manage and track customer orders</p>
             </div>
 
             {ordersLoading ? (
@@ -1698,105 +1717,72 @@ const AdminProfile: React.FC = () => {
               <div className="text-center py-8">
                 <ShoppingBag className="mx-auto h-12 w-12 text-gray-400" />
                 <h3 className="mt-2 text-sm font-medium text-white">No orders yet</h3>
-                <p className="mt-1 text-sm text-gray-400">
-                  Orders will appear here when customers make purchases.
-                </p>
+                <p className="mt-1 text-sm text-gray-400">Orders will appear here when customers make purchases.</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {orders.map((order) => (
-                  <motion.div
-                    key={order.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-gray-800/30 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50"
-                  >
-                    <div className="flex items-center justify-between mb-4">
+                  <div key={order.id} className="bg-gray-800/50 rounded-xl p-6">
+                    {/* Order Header */}
+                    <div className="flex justify-between items-center mb-4">
                       <div>
                         <h3 className="text-lg font-medium text-white">Order #{order.id.slice(0, 8)}</h3>
                         <p className="text-sm text-gray-400">
                           {order.createdAt instanceof Timestamp 
-                            ? order.createdAt.toDate().toLocaleDateString() 
-                            : order.createdAt?.toDate?.()?.toLocaleDateString() || 'Date not available'}
+                            ? order.createdAt.toDate().toLocaleDateString()
+                            : 'Date not available'}
                         </p>
                       </div>
                       <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        order.status === 'completed' 
-                          ? 'bg-green-500/20 text-green-400'
-                          : order.status === 'processing'
-                          ? 'bg-yellow-500/20 text-yellow-400'
-                          : order.status === 'cancelled'
-                          ? 'bg-red-500/20 text-red-400'
-                          : 'bg-gray-500/20 text-gray-400'
+                        order.status === 'completed' ? 'bg-green-500/20 text-green-400' : ''
                       }`}>
-                        {order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Unknown Status'}
+                        Completed
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Order Content */}
+                    <div className="grid grid-cols-2 gap-8">
+                      {/* Items Section */}
                       <div>
-                        <h4 className="text-sm font-medium text-gray-400 mb-2">Items</h4>
-                        <div className="space-y-2">
-                          {order.items && order.items.length > 0 ? (
-                            order.items.map((item) => (
-                              <div key={item.id} className="flex items-center space-x-3">
-                                <img
-                                  src={item.image}
-                                  alt={item.name}
-                                  className="w-10 h-10 object-cover rounded-lg"
-                                />
-                                <div>
-                                  <p className="text-sm text-white">{item.name}</p>
-                                  <p className="text-xs text-gray-400">
-                                    ${item.price} × {item.quantity}
-                                  </p>
-                                </div>
+                        <h4 className="text-sm text-gray-400 mb-3">Items</h4>
+                        <div className="space-y-3">
+                          {order.items && order.items.map((item, index) => (
+                            <div key={index} className="flex items-center space-x-3">
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="w-12 h-12 object-cover rounded-lg"
+                              />
+                              <div>
+                                <p className="text-white text-sm">{item.name}</p>
+                                <p className="text-gray-400 text-sm">${item.price} × {item.quantity}</p>
                               </div>
-                            ))
-                          ) : (
-                            <p className="text-sm text-gray-400">No items found</p>
-                          )}
+                            </div>
+                          ))}
                         </div>
                       </div>
-                      
+
+                      {/* Payment Details */}
                       <div>
-                        <h4 className="text-sm font-medium text-gray-400 mb-2">Payment Details</h4>
+                        <h4 className="text-sm text-gray-400 mb-3">Payment Details</h4>
                         <div className="space-y-2">
-                          <p className="text-sm text-white">
-                            Total: ${order.totalAmount?.toFixed(2) || '0.00'}
-                          </p>
-                          <p className="text-sm text-white">
-                            Method: {order.paymentMethod || 'Not specified'}
-                          </p>
+                          <p className="text-white">Total: ${order.totalAmount?.toFixed(2) || '0.00'}</p>
+                          <p className="text-gray-400">Method: {order.paymentMethod}</p>
                           {order.transactionHash && (
                             <a
                               href={`https://sepolia.basescan.org/tx/${order.transactionHash}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center space-x-1"
+                              className="text-indigo-400 hover:text-indigo-300 flex items-center space-x-1 text-sm"
                             >
-                              <ExternalLink className="w-4 h-4" />
                               <span>View Transaction</span>
+                              <ExternalLink className="w-4 h-4" />
                             </a>
                           )}
                         </div>
                       </div>
                     </div>
-
-                    {order.shippingAddress && (
-                      <div className="mt-4">
-                        <h4 className="text-sm font-medium text-gray-400 mb-2">Shipping Address</h4>
-                        <div className="text-sm text-white">
-                          <p>{order.shippingAddress.name}</p>
-                          <p>{order.shippingAddress.address}</p>
-                          <p>
-                            {order.shippingAddress.city}, {order.shippingAddress.country} {order.shippingAddress.zipCode}
-                          </p>
-                          <p>{order.shippingAddress.email}</p>
-                        </div>
-                      </div>
-                    )}
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             )}
