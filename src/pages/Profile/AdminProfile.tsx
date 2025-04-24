@@ -42,7 +42,8 @@ import {
   ShoppingCart,
   X,
   Minus,
-  ShoppingBag
+  ShoppingBag,
+  ExternalLink
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import ProfileAvatar from '../../components/ProfileAvatar';
@@ -143,6 +144,30 @@ interface FormState {
   address: string;
 }
 
+interface Order {
+  id: string;
+  items: Array<{
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+    image: string;
+  }>;
+  totalAmount: number;
+  paymentMethod: string;
+  status: 'pending' | 'processing' | 'completed' | 'cancelled';
+  transactionHash?: string;
+  createdAt: Timestamp;
+  shippingAddress?: {
+    name: string;
+    email: string;
+    address: string;
+    city: string;
+    country: string;
+    zipCode: string;
+  };
+}
+
 const AdminProfile: React.FC = () => {
   const [adminData, setAdminData] = useState<AdminData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -185,6 +210,8 @@ const AdminProfile: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [cart, setCart] = useState<Array<{ product: Product; quantity: number }>>([]);
   const [showCart, setShowCart] = useState(false);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
 
   const fetchStats = async () => {
     if (!user) return;
@@ -298,6 +325,40 @@ const AdminProfile: React.FC = () => {
   useEffect(() => {
     if (activeTab === 'products') {
       fetchProducts();
+    }
+  }, [activeTab]);
+
+  // Add fetchOrders function
+  const fetchOrders = async () => {
+    try {
+      setOrdersLoading(true);
+      const ordersRef = collection(db, 'orders');
+      const ordersSnapshot = await getDocs(ordersRef);
+      const ordersData = ordersSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Order[];
+
+      // Sort orders by creation date, handling undefined or invalid dates
+      const sortedOrders = ordersData.sort((a, b) => {
+        const dateA = a.createdAt instanceof Timestamp ? a.createdAt.toMillis() : 0;
+        const dateB = b.createdAt instanceof Timestamp ? b.createdAt.toMillis() : 0;
+        return dateB - dateA; // Sort in descending order (newest first)
+      });
+
+      setOrders(sortedOrders);
+    } catch (err) {
+      console.error('Error fetching orders:', err);
+      toast.error('Failed to load orders');
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  // Add useEffect for orders
+  useEffect(() => {
+    if (activeTab === 'orders') {
+      fetchOrders();
     }
   }, [activeTab]);
 
@@ -925,6 +986,18 @@ const AdminProfile: React.FC = () => {
             <Package className="w-5 h-5" />
             <span>Products</span>
           </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => handleTabChange('orders')}
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+              activeTab === 'orders' ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700/50'
+            }`}
+          >
+            <ShoppingBag className="w-5 h-5" />
+            <span>Orders</span>
+          </motion.button>
         </nav>
 
         <div className="mt-auto pt-6 border-t border-gray-700/50">
@@ -951,6 +1024,7 @@ const AdminProfile: React.FC = () => {
             {activeTab === 'settings' && 'Settings'}
             {activeTab === 'nft-rewards' && 'NFT Rewards'}
             {activeTab === 'products' && 'Products'}
+            {activeTab === 'orders' && 'Orders'}
           </h1>
           <div className="flex items-center space-x-4">
             <div className="relative">
@@ -1600,6 +1674,130 @@ const AdminProfile: React.FC = () => {
                     </>
                   )}
                 </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Add Orders View */}
+        {activeTab === 'orders' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-bold">All Orders</h2>
+                <p className="text-gray-400 text-sm mt-1">Manage and track customer orders</p>
+              </div>
+            </div>
+
+            {ordersLoading ? (
+              <div className="text-center py-8">
+                <Loader2 className="w-8 h-8 text-indigo-400 animate-spin mx-auto" />
+                <p className="mt-2 text-gray-400">Loading orders...</p>
+              </div>
+            ) : !orders || orders.length === 0 ? (
+              <div className="text-center py-8">
+                <ShoppingBag className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-white">No orders yet</h3>
+                <p className="mt-1 text-sm text-gray-400">
+                  Orders will appear here when customers make purchases.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {orders.map((order) => (
+                  <motion.div
+                    key={order.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-gray-800/30 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-lg font-medium text-white">Order #{order.id.slice(0, 8)}</h3>
+                        <p className="text-sm text-gray-400">
+                          {order.createdAt instanceof Timestamp 
+                            ? order.createdAt.toDate().toLocaleDateString() 
+                            : order.createdAt?.toDate?.()?.toLocaleDateString() || 'Date not available'}
+                        </p>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        order.status === 'completed' 
+                          ? 'bg-green-500/20 text-green-400'
+                          : order.status === 'processing'
+                          ? 'bg-yellow-500/20 text-yellow-400'
+                          : order.status === 'cancelled'
+                          ? 'bg-red-500/20 text-red-400'
+                          : 'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        {order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Unknown Status'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-400 mb-2">Items</h4>
+                        <div className="space-y-2">
+                          {order.items && order.items.length > 0 ? (
+                            order.items.map((item) => (
+                              <div key={item.id} className="flex items-center space-x-3">
+                                <img
+                                  src={item.image}
+                                  alt={item.name}
+                                  className="w-10 h-10 object-cover rounded-lg"
+                                />
+                                <div>
+                                  <p className="text-sm text-white">{item.name}</p>
+                                  <p className="text-xs text-gray-400">
+                                    ${item.price} × {item.quantity}
+                                  </p>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-sm text-gray-400">No items found</p>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-400 mb-2">Payment Details</h4>
+                        <div className="space-y-2">
+                          <p className="text-sm text-white">
+                            Total: ${order.totalAmount?.toFixed(2) || '0.00'}
+                          </p>
+                          <p className="text-sm text-white">
+                            Method: {order.paymentMethod || 'Not specified'}
+                          </p>
+                          {order.transactionHash && (
+                            <a
+                              href={`https://sepolia.basescan.org/tx/${order.transactionHash}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center space-x-1"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                              <span>View Transaction</span>
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {order.shippingAddress && (
+                      <div className="mt-4">
+                        <h4 className="text-sm font-medium text-gray-400 mb-2">Shipping Address</h4>
+                        <div className="text-sm text-white">
+                          <p>{order.shippingAddress.name}</p>
+                          <p>{order.shippingAddress.address}</p>
+                          <p>
+                            {order.shippingAddress.city}, {order.shippingAddress.country} {order.shippingAddress.zipCode}
+                          </p>
+                          <p>{order.shippingAddress.email}</p>
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
               </div>
             )}
           </div>

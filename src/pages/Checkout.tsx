@@ -1,13 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useCart } from '../context/CartContext';
 import { ChevronLeft, CreditCard, Truck, Shield, Wallet, CheckCircle2, AlertCircle, Loader2, ExternalLink, Box } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { useAccount, useConnect, useDisconnect, useBalance, useContractWrite, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useConnect, useDisconnect, useBalance, useContractWrite, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 import { parseEther } from 'viem';
 import { placeOrder } from '../firebase';
 import { ethers } from "ethers";
+import { CONTRACT_ADDRESSES } from '../web3Config';
+import { collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
+import { db } from '../firebase';
+
+// Add these contract ABIs
+const rewardTokenABI = [
+  "function balanceOf(address account) public view returns (uint256)",
+  "function decimals() public view returns (uint8)"
+] as const;
+
+const distributorABI = [
+  {
+    name: "distributeRewards",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "recipient", type: "address" },
+      { name: "amount", type: "uint256" }
+    ],
+    outputs: []
+  }
+] as const;
 
 const NFT_CONTRACT_ADDRESS = "0xc4FEbC06ff857d8D34E11dF7f6d85B96ee90711A";
 const NFT_CONTRACT_ABI = [
@@ -57,6 +79,14 @@ const Checkout = () => {
     hash: paymentTxHash,
   });
 
+  // Add contract write hook
+  const { writeContract: distributeReward, data: claimTxHashData, error: claimErrorData } = useWriteContract();
+
+  // Add transaction receipt hook
+  const { isLoading: isClaimLoading, isSuccess: isClaimSuccess, data: claimReceiptData } = useWaitForTransactionReceipt({
+    hash: claimTxHashData,
+  });
+
   const [formData, setFormData] = useState({
     email: '',
     name: '',
@@ -78,89 +108,120 @@ const Checkout = () => {
   };
 
   const handleCryptoPayment = async () => {
-    if (!isConnected) {
-      toast.error('Please connect your wallet first');
+    if (!address) {
+      setError('Please connect your wallet first');
       return;
     }
 
-    setMinting(true);
-    setTransactionStatus('processing');
-    setStatus('Initiating NFT minting...');
+    try {
+      setError('');
+      setStatus('Initiating transaction...');
+      setMinting(true);
+      console.log('Starting payment...');
+      
+      const amount = BigInt(100) * BigInt(10 ** 18); // 100 tokens with 18 decimals
+      console.log('Processing payment with params:', {
+        address: address,
+        amount: amount.toString()
+      });
 
-    if (window.ethereum) {
-      try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const signer = provider.getSigner();
-        const contract = new ethers.Contract(
-          "0xc4FEbC06ff857d8D34E11dF7f6d85B96ee90711A",
-          ["function mint() public"],
-          signer
-        );
+      await distributeReward({
+        address: CONTRACT_ADDRESSES.distributor as `0x${string}`,
+        abi: distributorABI,
+        functionName: 'distributeRewards',
+        args: [address, amount]
+      });
 
-        setMintingStatus('Minting your NFT...');
-        const tx = await contract.mint();
-        setTransactionStatus('submitted');
-        setStatus('Transaction submitted to blockchain');
-        setCurrentTxHash(tx.hash);
-
-        setStatus('Waiting for transaction confirmation...');
-        const receipt = await tx.wait();
-        
-        if (receipt.status === 1) {
-          setTransactionStatus('confirmed');
-          setMintingStatus('NFT Minted successfully! 🎉');
-
-          // Create order in Firebase
-          const orderData = {
-            items: cart.map(item => ({
-              id: item.id,
-              name: item.name,
-              price: item.price,
-              quantity: item.quantity,
-              image: item.image
-            })),
-            totalAmount: 0, // Free minting
-            paymentMethod: 'crypto',
-            status: 'completed',
-            transactionHash: tx.hash,
-            nftMinted: true
-          };
-
-          const result = await placeOrder(orderData);
-          
-          if (result.success) {
-            clearCart();
-            toast.success('🎉 NFT minted successfully! Check your wallet.', {
-              duration: 5000,
-              icon: '🏆'
-            });
-            setTimeout(() => {
-              navigate('/products');
-            }, 3000);
-          }
-        }
-      } catch (error: any) {
-        console.error('Minting error:', error);
-        setTransactionStatus('failed');
-        if (error.code === 'ACTION_REJECTED') {
-          toast.error('Transaction was rejected by user.');
-          setError('Transaction was rejected by user.');
-        } else if (error.message.includes('insufficient funds')) {
-          toast.error('Insufficient funds for minting.');
-          setError('Insufficient funds for minting.');
-        } else {
-          toast.error('Failed to mint NFT. Please try again.');
-          setError(`Minting failed: ${error.message}`);
-        }
-      } finally {
-        setMinting(false);
-      }
-    } else {
-      toast.error('Please install MetaMask!');
-      setMinting(false);
+      // Don't show success until transaction is confirmed
+      setTransactionStatus('processing');
+      setStatus('Please confirm the transaction in MetaMask...');
+    } catch (err) {
+      console.error('Error in handleCryptoPayment:', err);
+      setError(`Failed to process payment: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setStatus('');
       setTransactionStatus('failed');
+      setMintingStatus('Payment failed');
+      toast.error('Payment failed');
+    } finally {
+      setMinting(false);
     }
   };
+
+  // Update effect to handle transaction status
+  useEffect(() => {
+    const handleTransactionStatus = async () => {
+      if (claimTxHashData) {
+        console.log('Claim transaction submitted:', claimTxHashData);
+        setStatus('Transaction submitted to blockchain');
+        setTransactionStatus('submitted');
+      }
+
+      if (isClaimLoading) {
+        console.log('Waiting for claim confirmation...');
+        setStatus('Waiting for blockchain confirmation...');
+      }
+
+      if (claimReceiptData) {
+        console.log('Claim receipt received:', claimReceiptData);
+        const success = claimReceiptData.status === 'success';
+        if (success) {
+          setTransactionStatus('confirmed');
+          setStatus('Payment successful! 🎉');
+          
+          // Check if order already exists
+          const ordersRef = collection(db, 'orders');
+          const q = query(ordersRef, where('transactionHash', '==', claimTxHashData));
+          const querySnapshot = await getDocs(q);
+          
+          // Only create order if it doesn't exist
+          if (querySnapshot.empty) {
+            // Update order status
+            const orderData = {
+              items: cart.map(item => ({
+                id: item.id,
+                name: item.name,
+                price: item.price,
+                quantity: item.quantity,
+                image: item.image
+              })),
+              totalAmount: 0, // Free minting
+              paymentMethod: 'crypto',
+              status: 'completed',
+              transactionHash: claimTxHashData,
+              nftMinted: true,
+              createdAt: serverTimestamp()
+            };
+            
+            try {
+              await placeOrder(orderData);
+              toast.success('Payment successful!');
+              
+              // Clear cart and redirect after 2 seconds
+              clearCart();
+              setTimeout(() => {
+                navigate('/products');
+              }, 2000);
+            } catch (err) {
+              console.error('Error placing order:', err);
+              toast.error('Error updating order status');
+            }
+          }
+        } else {
+          setTransactionStatus('failed');
+          setStatus('Transaction failed');
+          toast.error('Payment failed');
+        }
+      }
+
+      if (claimErrorData) {
+        console.error('Claim error:', claimErrorData);
+        setError(`Transaction failed: ${claimErrorData.message}`);
+        setTransactionStatus('failed');
+      }
+    };
+
+    handleTransactionStatus();
+  }, [claimTxHashData, isClaimLoading, claimReceiptData, claimErrorData, cart, clearCart, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -265,9 +326,9 @@ const Checkout = () => {
 
           <div className="border-t border-gray-700 pt-6">
             <div className="flex items-center justify-between mb-6">
-              <span className="text-gray-400">NFT Minting</span>
+              <span className="text-gray-400">Registration Fee</span>
               <span className="text-xl font-bold text-white">
-                Free
+                100 Tokens
               </span>
             </div>
             <motion.button
@@ -280,56 +341,38 @@ const Checkout = () => {
               {minting ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Minting NFT...</span>
+                  <span>Processing Payment...</span>
                 </>
               ) : (
                 <>
-                  <Box className="w-5 h-5" />
-                  <span>Mint NFT</span>
+                  <CreditCard className="w-5 h-5" />
+                  <span>Pay Registration Fee</span>
                 </>
               )}
             </motion.button>
           </div>
 
           {/* Transaction Status */}
-          {(transactionStatus !== 'idle' || mintingStatus) && (
+          {transactionStatus === 'confirmed' && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               className="p-4 rounded-xl bg-gray-900/50 space-y-3"
             >
               <div className="flex items-center space-x-2">
-                {transactionStatus === 'processing' && (
-                  <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
-                )}
-                {transactionStatus === 'submitted' && (
-                  <CheckCircle2 className="w-4 h-4 text-yellow-400" />
-                )}
-                {transactionStatus === 'confirmed' && (
-                  <CheckCircle2 className="w-4 h-4 text-green-400" />
-                )}
-                {transactionStatus === 'failed' && (
-                  <AlertCircle className="w-4 h-4 text-red-400" />
-                )}
-                <p className="text-gray-300">{status}</p>
+                <CheckCircle2 className="w-4 h-4 text-green-400" />
+                <p className="text-gray-300">Payment successful! 🎉</p>
               </div>
-
-              {mintingStatus && (
-                <div className="flex items-center space-x-2 text-gray-300">
-                  <Box className="w-4 h-4 text-purple-400" />
-                  <span>{mintingStatus}</span>
-                </div>
-              )}
 
               {currentTxHash && (
                 <a
-                  href={`https://sepolia.etherscan.io/tx/${currentTxHash}`}
+                  href={`https://sepolia.basescan.org/tx/${currentTxHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center space-x-2 text-blue-400 hover:text-blue-300 transition-colors text-sm"
                 >
                   <ExternalLink className="w-4 h-4" />
-                  <span>View on Etherscan</span>
+                  <span>View on Base Sepolia Explorer</span>
                 </a>
               )}
             </motion.div>
