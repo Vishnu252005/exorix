@@ -16,82 +16,150 @@ import {
   Clock
 } from 'lucide-react';
 
+// Add new interfaces for live streams and gaming achievements
+interface LiveStream {
+  id: string;
+  title: string;
+  game: string;
+  platform: 'Twitch' | 'YouTube';
+  status: 'live' | 'upcoming' | 'ended';
+  startTime: string;
+  viewers?: number;
+  thumbnailUrl: string;
+  streamUrl: string;
+}
+
+interface GamingAchievement {
+  id: string;
+  title: string;
+  game: string;
+  description: string;
+  date: string;
+  icon: string;
+}
+
 const Portfolio = () => {
   // State to track which video is currently playing in fullscreen mode
   const [activeVideo, setActiveVideo] = useState<string | null>(null);
   // State to track which project card is being hovered
   const [hoveredProject, setHoveredProject] = useState<string | null>(null);
+  const [activeStream, setActiveStream] = useState<LiveStream | null>(null);
 
   const projects = [
     {
-      title: 'Exorix Championship Series 2024',
+      title: 'CS2 Major Championship Finals',
       category: 'Esports Tournament',
-      description: 'Premier gaming tournament featuring top teams from around the world competing for a $500,000 prize pool.',
-      youtubeEmbed: 'https://www.youtube.com/embed/jNQXAC9IVRw',
-      tags: ['Tournament', 'Live Stream', 'Multi-Game', 'Pro Players']
+      description: 'BLAST.tv Paris Major 2023 Grand Finals - Vitality vs GamerLegion',
+      youtubeEmbed: 'https://www.youtube.com/embed/t1I93MoKoVo',
+      tags: ['CS2', 'Tournament', 'Grand Finals', 'Pro Play']
     },
     {
-      title: 'Gaming Content Hub',
-      category: 'Content Creation',
-      description: 'Professional gaming content production with high-quality streams, highlights, and player interviews.',
-      youtubeEmbed: 'https://www.youtube.com/embed/jNQXAC9IVRw',
-      tags: ['Content', 'Streaming', 'Highlights', 'Interviews']
+      title: 'Valorant Champions 2023',
+      category: 'Esports Highlights',
+      description: 'Evil Geniuses vs Paper Rex - Valorant Champions 2023 Grand Finals Highlights',
+      youtubeEmbed: 'https://www.youtube.com/embed/7No6GqMwxAc',
+      tags: ['Valorant', 'Champions', 'Highlights', 'Pro Play']
     },
     {
-      title: 'Esports Training Facility',
-      category: 'Gaming Infrastructure',
-      description: 'State-of-the-art gaming center with high-performance setups and professional training environment.',
-      youtubeEmbed: 'https://www.youtube.com/embed/jNQXAC9IVRw',
-      tags: ['Facility', 'Training', 'Equipment', 'Coaching']
+      title: 'League of Legends Worlds 2023',
+      category: 'Tournament Coverage',
+      description: 'T1 vs WBG - Worlds 2023 Semi-Finals Full Match',
+      youtubeEmbed: 'https://www.youtube.com/embed/0zQHxZqMEPE',
+      tags: ['LoL', 'Worlds', 'Semi-Finals', 'T1']
     },
     {
-      title: 'Community Gaming Nights',
-      category: 'Community Events',
-      description: 'Weekly community gaming sessions with tournaments, giveaways, and social events.',
-      youtubeEmbed: 'https://www.youtube.com/embed/jNQXAC9IVRw',
-      tags: ['Community', 'Social', 'Tournaments', 'Events']
+      title: 'Dota 2 The International',
+      category: 'Championship Finals',
+      description: 'Team Spirit vs PSG.LGD - The International 10 Grand Finals',
+      youtubeEmbed: 'https://www.youtube.com/embed/ZPCxvHQYdKc',
+      tags: ['Dota 2', 'TI10', 'Grand Finals', 'Team Spirit']
     },
     {
-      title: 'Pro Team Showcase',
-      category: 'Team Management',
-      description: 'Professional team management and player development program.',
-      youtubeEmbed: 'https://www.youtube.com/embed/jNQXAC9IVRw',
-      tags: ['Teams', 'Management', 'Development', 'Scouting']
+      title: 'PUBG Global Championship',
+      category: 'Battle Royale',
+      description: 'PGC 2023 Grand Finals Highlights - Best Moments',
+      youtubeEmbed: 'https://www.youtube.com/embed/p1H3GsAM5Ug',
+      tags: ['PUBG', 'Championship', 'Highlights', 'Esports']
     },
     {
-      title: 'Gaming Academy',
-      category: 'Education',
-      description: 'Comprehensive gaming education program for aspiring esports professionals.',
-      youtubeEmbed: 'https://www.youtube.com/embed/jNQXAC9IVRw',
-      tags: ['Education', 'Training', 'Coaching', 'Development']
+      title: 'Rocket League World Championship',
+      category: 'Esports Finals',
+      description: 'RLCS 2023-24 Winter Major - Grand Finals Highlights',
+      youtubeEmbed: 'https://www.youtube.com/embed/KOI5dUhFEzg',
+      tags: ['Rocket League', 'RLCS', 'Major', 'Finals']
     }
   ];
 
   // Featured projects with more details
   const featuredProjects = [
     {
-      title: 'Exorix World Championship 2024',
-      category: 'Esports Tournament',
-      description: 'The pinnacle of competitive gaming, featuring the world\'s best players across multiple game titles.',
+      title: 'Live: ESL Pro League Season 19',
+      category: 'Live Tournament Stream',
+      description: 'Watch the intense ESL Pro League Season 19 matches live! Experience professional CS2 gameplay at its finest with real-time commentary and analysis.',
       stats: [
-        { label: 'Prize Pool', value: '$1M+' },
-        { label: 'Teams', value: '32' },
-        { label: 'Countries', value: '25' },
+        { label: 'Live Viewers', value: 'LIVE' },
+        { label: 'Teams', value: '24' },
+        { label: 'Prize Pool', value: '$850K' },
       ],
-      youtubeEmbed: 'https://www.youtube.com/embed/jNQXAC9IVRw',
-      technologies: ['4K Streaming', 'Live Commentary', 'Multi-Camera', 'Instant Replays']
+      youtubeEmbed: 'https://www.youtube.com/embed/BdhjFVUu8hA',
+      technologies: ['Live Stream', 'HD Quality', 'Live Stats', 'Pro Commentary']
     },
     {
-      title: 'Gaming Content Studio',
-      category: 'Content Production',
-      description: 'Professional gaming content production facility with cutting-edge equipment and experienced team.',
+      title: 'VCT LOCK//IN São Paulo',
+      category: 'Valorant Championship',
+      description: 'Witness the most intense Valorant matches from the VCT LOCK//IN tournament in São Paulo.',
       stats: [
-        { label: 'Content', value: '500+' },
-        { label: 'Viewers', value: '10M+' },
-        { label: 'Channels', value: '5' },
+        { label: 'Views', value: '850K' },
+        { label: 'Teams', value: '32' },
+        { label: 'Maps', value: '54' },
       ],
-      youtubeEmbed: 'https://www.youtube.com/embed/jNQXAC9IVRw',
-      technologies: ['4K Production', 'Live Streaming', 'Motion Graphics', 'Audio Engineering']
+      youtubeEmbed: 'https://www.youtube.com/embed/nuMUL8Y_Q4c',
+      technologies: ['8K Production', 'Player Cams', 'Match Analytics', 'Highlight Reels']
+    }
+  ];
+
+  // Update the live streams array to include the current stream
+  const liveStreams = [
+    {
+      id: '1',
+      title: 'ESL Pro League Season 19 - LIVE',
+      game: 'Counter-Strike 2',
+      platform: 'YouTube',
+      status: 'live',
+      startTime: new Date().toISOString(),
+      viewers: 45000,
+      thumbnailUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e',
+      streamUrl: 'https://www.youtube.com/live/BdhjFVUu8hA?si=0CDGw970lpqv-VIf'
+    },
+    {
+      id: '2',
+      title: 'Pro League Qualifiers - Day 2',
+      game: 'Valorant',
+      platform: 'YouTube',
+      status: 'upcoming',
+      startTime: new Date(Date.now() + 3600000).toISOString(),
+      thumbnailUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e',
+      streamUrl: 'https://youtube.com/yourchannelname'
+    }
+  ];
+
+  // Sample achievements data
+  const achievements: GamingAchievement[] = [
+    {
+      id: '1',
+      title: 'Tournament Champion',
+      game: 'Counter-Strike 2',
+      description: 'First place in the Regional Championship 2024',
+      date: '2024-02-15',
+      icon: '🏆'
+    },
+    {
+      id: '2',
+      title: 'MVP Player',
+      game: 'Valorant',
+      description: 'Most Valuable Player in Pro League Season 5',
+      date: '2024-01-20',
+      icon: '⭐'
     }
   ];
 
@@ -108,6 +176,17 @@ const Portfolio = () => {
   // Function to close fullscreen modal
   const closeVideo = () => {
     setActiveVideo(null);
+  };
+
+  // Function to format viewer count
+  const formatViewers = (count: number): string => {
+    if (count >= 1000000) {
+      return `${(count / 1000000).toFixed(1)}M`;
+    }
+    if (count >= 1000) {
+      return `${(count / 1000).toFixed(1)}K`;
+    }
+    return count.toString();
   };
 
   return (
@@ -146,6 +225,123 @@ const Portfolio = () => {
             >
               Explore our portfolio of gaming events, esports tournaments, and content creation projects.
             </motion.p>
+          </div>
+        </div>
+      </div>
+
+      {/* Live Streams Section */}
+      <div className="relative py-20 bg-gradient-to-b from-[#0A0A0B] to-[#12121A]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-4xl md:text-5xl font-extrabold text-center mb-12"
+          >
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-red-500 to-purple-500">
+              Live Streams
+            </span>
+          </motion.h2>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            {liveStreams.map((stream) => (
+              <motion.div
+                key={stream.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="group relative overflow-hidden rounded-2xl bg-gray-800/30 backdrop-blur-sm border border-gray-700/50 hover:border-red-500/50 transition-all duration-300"
+              >
+                <div className="relative aspect-video">
+                  <img
+                    src={stream.thumbnailUrl}
+                    alt={stream.title}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                  
+                  {/* Live Badge */}
+                  {stream.status === 'live' && (
+                    <div className="absolute top-4 left-4 flex items-center space-x-2">
+                      <span className="flex items-center px-3 py-1 rounded-full bg-red-600 text-white text-sm font-medium">
+                        <span className="w-2 h-2 bg-white rounded-full animate-pulse mr-2" />
+                        LIVE
+                      </span>
+                      <span className="px-3 py-1 rounded-full bg-gray-900/80 text-white text-sm">
+                        {formatViewers(stream.viewers || 0)} viewers
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Platform Icon */}
+                  <div className="absolute top-4 right-4">
+                    {stream.platform === 'Twitch' ? (
+                      <svg className="w-6 h-6 text-purple-500" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/>
+                      </svg>
+                    ) : (
+                      <svg className="w-6 h-6 text-red-500" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                      </svg>
+                    )}
+                  </div>
+                </div>
+
+                <div className="p-6">
+                  <h3 className="text-xl font-bold text-white mb-2">{stream.title}</h3>
+                  <p className="text-gray-400 mb-4">{stream.game}</p>
+                  
+                  <a
+                    href={stream.streamUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                  >
+                    {stream.status === 'live' ? 'Watch Now' : 'Set Reminder'}
+                    <svg className="w-4 h-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                  </a>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Gaming Achievements Section */}
+      <div className="relative py-20 bg-gradient-to-b from-[#12121A] to-[#0A0A0B]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-4xl md:text-5xl font-extrabold text-center mb-12"
+          >
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-yellow-500 to-orange-500">
+              Gaming Achievements
+            </span>
+          </motion.h2>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {achievements.map((achievement) => (
+              <motion.div
+                key={achievement.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                whileHover={{ scale: 1.05 }}
+                className="bg-gray-800/30 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 hover:border-yellow-500/50 transition-all duration-300"
+              >
+                <div className="text-4xl mb-4">{achievement.icon}</div>
+                <h3 className="text-lg font-bold text-white mb-2">{achievement.title}</h3>
+                <p className="text-gray-400 text-sm mb-2">{achievement.game}</p>
+                <p className="text-gray-500 text-sm">{achievement.description}</p>
+                <p className="text-yellow-500 text-sm mt-4">
+                  {new Date(achievement.date).toLocaleDateString()}
+                </p>
+              </motion.div>
+            ))}
           </div>
         </div>
       </div>

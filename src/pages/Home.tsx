@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { 
   ArrowRight, 
   Star, 
@@ -16,7 +17,9 @@ import {
   Flame,
   Calendar,
   Sparkles,
-  Crown
+  Crown,
+  Boxes,
+  ExternalLink
 } from 'lucide-react';
 import ExorixLogo from '../assets/exorix-logo.svg';
 import HeroBackground from '../components/HeroBackground';
@@ -36,23 +39,69 @@ import {
 
 const Home = () => {
   const [scrollY, setScrollY] = useState(0);
-  const heroRef = useRef<HTMLDivElement>(null);
-  const parallaxRef = useRef<HTMLDivElement>(null);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const controls = useAnimation();
 
   useEffect(() => {
     const handleScroll = () => {
       setScrollY(window.scrollY);
-      if (parallaxRef.current) {
-        parallaxRef.current.style.transform = `translateY(${scrollY * 0.5}px)`;
-      }
-      if (heroRef.current) {
-        heroRef.current.style.backgroundPositionY = `${scrollY * 0.5}px`;
+      controls.start({
+        y: window.scrollY * 0.5,
+        transition: { type: "spring", stiffness: 100 }
+      });
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const container = containerRef.current;
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        setMousePosition({ x, y });
       }
     };
 
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [scrollY]);
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [controls]);
+
+  const stats = [
+    { 
+      value: '50K+', 
+      label: 'Players', 
+      icon: Users, 
+      color: 'from-purple-500 to-indigo-500',
+      description: 'Active gamers worldwide',
+      increment: { start: 0, end: 50000, duration: 2 }
+    },
+    { 
+      value: '1000+', 
+      label: 'Tournaments', 
+      icon: Trophy, 
+      color: 'from-emerald-500 to-cyan-500',
+      description: 'Monthly competitions',
+      increment: { start: 0, end: 1000, duration: 1.5 }
+    },
+    { 
+      value: '$100K+', 
+      label: 'Prize Pool', 
+      icon: Crown, 
+      color: 'from-rose-500 to-orange-500',
+      description: 'Monthly rewards',
+      increment: { start: 0, end: 100000, duration: 2.5 }
+    }
+  ];
+
+  const navItems = [
+    { name: 'Games', icon: Gamepad2 },
+    { name: 'Tournaments', icon: Trophy },
+    { name: 'Community', icon: Users }
+  ];
 
   const features = [
     {
@@ -240,164 +289,507 @@ const Home = () => {
     }
   ];
 
+  const [hoveredImage, setHoveredImage] = useState<number | null>(null);
+
   return (
     <div className="min-h-screen bg-[#0A0A0B] text-white overflow-hidden">
-      {/* Hero Section with Parallax Effect */}
-      <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-[url('/gaming-bg.jpg')] bg-cover bg-center opacity-20 scale-110" />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0A0A0B]/90 via-[#0A0A0B]/50 to-[#0A0A0B]" />
+      {/* Hero Section with Enhanced Effects */}
+      <div className="min-h-screen bg-[#0D0B1F] relative overflow-hidden perspective-1000" ref={containerRef}>
+        {/* Enhanced Mouse Follow Effect */}
+        <div 
+          className="pointer-events-none fixed inset-0 z-30 transition-opacity duration-300"
+          style={{
+            background: `
+              radial-gradient(600px at ${mousePosition.x}px ${mousePosition.y}px, 
+                rgba(79, 70, 229, 0.15),
+                rgba(147, 51, 234, 0.1),
+                transparent 80%
+              )
+            `
+          }}
+        />
+
+        {/* Enhanced Cyber Grid Effect */}
+        <div 
+          className="fixed inset-0 opacity-10"
+          style={{
+            backgroundImage: `
+              linear-gradient(transparent 0%, rgba(79, 70, 229, 0.05) 2%, transparent 3%),
+              linear-gradient(90deg, transparent 0%, rgba(147, 51, 234, 0.05) 2%, transparent 3%)
+            `,
+            backgroundSize: '30px 30px',
+            transform: `translateY(${scrollY * 0.2}px) rotate(-5deg) scale(1.5)`,
+            transition: 'transform 0.2s ease-out'
+          }}
+        />
           
-          {/* Animated Grid */}
+        {/* Enhanced Background Effects */}
           <div className="absolute inset-0">
-            <div className="absolute inset-0 bg-[url('/grid.svg')] bg-repeat opacity-10 animate-grid" />
-            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 animate-pulse" />
-          </div>
+          <div className="absolute inset-0 bg-gradient-to-b from-[#1A123D] via-[#0D0B1F] to-[#0D0B1F]" />
 
-          {/* Floating Elements */}
+          {/* Enhanced Animated Orbs */}
           <div className="absolute inset-0 overflow-hidden">
-            {/* Large Orbs */}
-            <div className="floating-elements">
-              {[...Array(15)].map((_, i) => (
-                <div
-                  key={`orb-${i}`}
-                  className="absolute rounded-full bg-gradient-to-r from-indigo-500/20 to-purple-500/20 animate-float blur-sm"
+            {[...Array(5)].map((_, i) => (
+              <motion.div
+                key={i}
+                animate={{
+                  x: [0, Math.random() * 200 - 100, 0],
+                  y: [0, Math.random() * 200 - 100, 0],
+                  scale: [1, 1.2, 1],
+                  rotate: [0, 360, 0]
+                }}
+                transition={{
+                  duration: 15 + Math.random() * 10,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+                className="absolute rounded-full blur-[120px] opacity-20"
                   style={{
-                    left: `${Math.random() * 100}%`,
-                    top: `${Math.random() * 100}%`,
-                    width: `${Math.random() * 150 + 50}px`,
-                    height: `${Math.random() * 150 + 50}px`,
-                    animationDelay: `${Math.random() * 5}s`,
-                    animationDuration: `${15 + Math.random() * 15}s`
+                  top: `${20 + i * 15}%`,
+                  left: `${10 + i * 20}%`,
+                  width: `${200 + i * 100}px`,
+                  height: `${200 + i * 100}px`,
+                  background: `linear-gradient(45deg, 
+                    ${i % 2 === 0 ? '#4F46E5' : '#9333EA'}, 
+                    ${i % 2 === 0 ? '#EC4899' : '#4F46E5'}
+                  )`,
+                  filter: 'blur(60px)',
+                  mixBlendMode: 'lighten'
                   }}
                 />
               ))}
             </div>
 
-            {/* Small Particles */}
-            <div className="particles">
-              {[...Array(30)].map((_, i) => (
-                <div
-                  key={`particle-${i}`}
-                  className="absolute rounded-full bg-white/30 animate-particle"
+          {/* Enhanced Particle Effect */}
+          <div className="absolute inset-0">
+            {[...Array(40)].map((_, i) => (
+              <motion.div
+                key={i}
+                animate={{
+                  y: [-20, window.innerHeight + 20],
+                  x: [Math.random() * window.innerWidth, Math.random() * window.innerWidth],
+                  opacity: [0, 1, 0],
+                  scale: [0, 1, 0]
+                }}
+                transition={{
+                  duration: 8 + Math.random() * 15,
+                  repeat: Infinity,
+                  ease: "linear",
+                  delay: Math.random() * 5
+                }}
+                className="absolute w-1 h-1 bg-white rounded-full"
                   style={{
-                    left: `${Math.random() * 100}%`,
-                    top: `${Math.random() * 100}%`,
-                    width: `${Math.random() * 3 + 1}px`,
-                    height: `${Math.random() * 3 + 1}px`,
-                    animationDelay: `${Math.random() * 5}s`,
-                    animationDuration: `${10 + Math.random() * 20}s`
+                  opacity: 0.2 + Math.random() * 0.3,
+                  transform: `scale(${0.5 + Math.random()})`,
+                  boxShadow: `0 0 ${10 + Math.random() * 20}px rgba(255,255,255,0.3)`
                   }}
                 />
               ))}
+          </div>
             </div>
 
-            {/* Glowing Lines */}
-            <div className="lines">
-              {[...Array(10)].map((_, i) => (
-                <div
-                  key={`line-${i}`}
-                  className="absolute bg-gradient-to-r from-transparent via-indigo-500/20 to-transparent animate-line"
+        {/* Content */}
+        <div className="relative z-10">
+          {/* Enhanced Navigation Bar */}
+          <motion.div 
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="fixed top-20 left-1/2 transform -translate-x-1/2 z-10 flex gap-8 bg-white/[0.03] backdrop-blur-xl px-6 py-3 rounded-full border border-white/10 shadow-[0_0_30px_rgba(79,70,229,0.2)]"
+          >
+            {navItems.map((item) => (
+              <motion.button
+                key={item.name}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="group relative flex items-center gap-2 px-6 py-2"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-300" />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#4F46E5] to-[#9333EA] opacity-0 group-hover:opacity-10 rounded-lg transition-all duration-300" />
+                <div className="relative z-10 flex items-center gap-2">
+                  <item.icon className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" />
+                  <span className="text-gray-300 group-hover:text-white transition-colors">{item.name}</span>
+                  <motion.div 
+                    className="w-1 h-1 rounded-full bg-white/50 group-hover:bg-white transition-colors"
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ duration: 1, repeat: Infinity }}
+                  />
+                </div>
+              </motion.button>
+            ))}
+          </motion.div>
+
+          <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 pt-40">
+            <div className="flex items-start justify-between">
+              {/* Left Content */}
+              <div className="max-w-xl">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6 }}
+                >
+                  <div className="relative">
+                    <motion.div
+                      animate={{
+                        background: [
+                          'linear-gradient(45deg, #4F46E5, #9333EA, #EC4899)',
+                          'linear-gradient(45deg, #9333EA, #EC4899, #4F46E5)',
+                          'linear-gradient(45deg, #EC4899, #4F46E5, #9333EA)',
+                        ],
+                      }}
+                      transition={{
+                        duration: 6,
+                        repeat: Infinity,
+                        repeatType: "reverse",
+                      }}
+                      className="absolute -inset-1 rounded-lg blur-xl opacity-30"
+                    />
+                    <h1 className="relative text-6xl font-bold leading-tight mb-6 perspective-1000">
+                      <motion.span
+                        initial={{ rotateX: -90 }}
+                        animate={{ rotateX: 0 }}
+                        transition={{ duration: 0.8, delay: 0.2 }}
+                        className="block"
+                      >
+                        Exorix Gaming,
+                      </motion.span>
+                      <motion.span
+                        initial={{ rotateX: -90 }}
+                        animate={{ rotateX: 0 }}
+                        transition={{ duration: 0.8, delay: 0.4 }}
+                        className="block"
+                      >
+                        Your Ultimate
+                      </motion.span>
+                      <motion.div
+                        initial={{ rotateX: -90 }}
+                        animate={{ rotateX: 0 }}
+                        transition={{ duration: 0.8, delay: 0.6 }}
+                        className="relative inline-block"
+                      >
+                        <div className="relative">
+                          {/* Animated background for Gaming Hub text */}
+                          <motion.div
+                            className="absolute -inset-2 rounded-lg"
+                            animate={{
+                              background: [
+                                'linear-gradient(90deg, #4F46E5, #9333EA, #EC4899)',
+                                'linear-gradient(90deg, #EC4899, #4F46E5, #9333EA)',
+                                'linear-gradient(90deg, #9333EA, #EC4899, #4F46E5)',
+                              ],
+                              boxShadow: [
+                                '0 0 20px rgba(79, 70, 229, 0.5)',
+                                '0 0 25px rgba(236, 72, 153, 0.5)',
+                                '0 0 20px rgba(147, 51, 234, 0.5)',
+                              ]
+                            }}
+                            transition={{
+                              duration: 4,
+                              repeat: Infinity,
+                              repeatType: "reverse",
+                            }}
                   style={{
-                    left: '0',
-                    top: `${Math.random() * 100}%`,
-                    width: '100%',
-                    height: '1px',
-                    animationDelay: `${Math.random() * 5}s`,
-                    animationDuration: `${5 + Math.random() * 10}s`
-                  }}
-                />
-              ))}
-            </div>
+                              filter: 'blur(20px)',
+                              opacity: 0.3,
+                            }}
+                          />
+
+                          {/* Main Gaming Hub text with shimmer effect */}
+                          <div className="relative">
+                            <motion.span 
+                              className="relative inline-block text-transparent bg-clip-text font-black"
+                              style={{
+                                backgroundImage: 'linear-gradient(90deg, #4F46E5, #9333EA, #EC4899, #9333EA, #4F46E5)',
+                                backgroundSize: '200% 100%',
+                              }}
+                              animate={{
+                                backgroundPosition: ['0% 0%', '100% 0%', '0% 0%'],
+                              }}
+                              transition={{
+                                duration: 4,
+                                repeat: Infinity,
+                                ease: "linear",
+                              }}
+                            >
+                              Gaming Hub
+                            </motion.span>
+
+                            {/* Shimmer overlay */}
+                            <motion.div
+                              className="absolute inset-0 pointer-events-none"
+                              animate={{
+                                background: [
+                                  'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%)',
+                                  'linear-gradient(90deg, transparent 100%, rgba(255,255,255,0.2) 150%, transparent 200%)',
+                                ],
+                                backgroundSize: ['200% 100%', '200% 100%'],
+                                backgroundPosition: ['100% 0%', '-100% 0%'],
+                              }}
+                              transition={{
+                                duration: 1.5,
+                                repeat: Infinity,
+                                ease: "linear",
+                              }}
+                            />
+
+                            {/* Sparkle effects */}
+                            <div className="absolute -right-8 -top-1 flex items-center space-x-1">
+                              <Sparkles className="w-6 h-6 text-yellow-400 animate-pulse" />
+                              <motion.div
+                                animate={{
+                                  scale: [1, 1.2, 1],
+                                  opacity: [0.5, 1, 0.5],
+                                }}
+                                transition={{
+                                  duration: 2,
+                                  repeat: Infinity,
+                                  ease: "easeInOut",
+                                }}
+                                className="w-2 h-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"
+                              />
           </div>
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32">
-          <div className="text-center space-y-8">
-            <FadeInDown>
-              <div className="inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 backdrop-blur-sm mb-8">
-                <Sparkles className="h-5 w-5 text-indigo-400 mr-2" />
-                <span className="text-indigo-400 font-medium">The Ultimate Gaming Experience</span>
+                          {/* Glowing line under text */}
+                          <motion.div
+                            className="absolute -bottom-2 left-0 w-full h-[2px] rounded-full"
+                            initial={{ scaleX: 0, opacity: 0 }}
+                            animate={{
+                              scaleX: [0, 1, 1, 0],
+                              opacity: [0, 1, 1, 0],
+                              background: [
+                                'linear-gradient(90deg, transparent, #4F46E5, transparent)',
+                                'linear-gradient(90deg, transparent, #EC4899, transparent)',
+                                'linear-gradient(90deg, transparent, #9333EA, transparent)',
+                              ],
+                            }}
+                            transition={{
+                              duration: 3,
+                              repeat: Infinity,
+                              repeatType: "reverse",
+                              ease: "easeInOut",
+                            }}
+                          />
               </div>
-              <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold">
-                <span className="block bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 pb-4">
-                  Level Up Your
-                </span>
-                <span className="block text-white mt-2">Gaming Journey</span>
+                      </motion.div>
               </h1>
-            </FadeInDown>
+                  </div>
             
-            <FadeIn delay={0.2}>
-              <p className="mt-6 text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
-                Join the ultimate gaming platform where legends are born. Compete in epic tournaments, win amazing prizes, and become a gaming icon.
-              </p>
-            </FadeIn>
-            
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mt-12">
-              <FadeInUp delay={0.3}>
-                <AnimatedButton>
-                  <Link
-                    to="/signup"
-                    className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-medium rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-[0_0_40px_8px_rgba(99,102,241,0.3)]"
+                  <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.8 }}
+                    className="text-gray-400 text-lg mb-8 leading-relaxed"
                   >
-                    <span className="relative z-10 flex items-center">
-                      Join Now
-                      <Trophy className="ml-2 h-5 w-5 group-hover:rotate-12 transition-transform duration-300" />
+                    Join the ultimate gaming destination where legends are born.
+                    Compete in epic tournaments, win amazing prizes, and become
+                    part of a thriving global gaming community.
+                  </motion.p>
+
+                  <div className="flex gap-4 mb-12">
+                    <Link to="/esports">
+                      <motion.button
+                        whileHover={{ 
+                          scale: 1.02,
+                          boxShadow: '0 0 30px rgba(79, 70, 229, 0.4)'
+                        }}
+                        whileTap={{ scale: 0.98 }}
+                        className="group relative flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#4F46E5] to-[#9333EA] rounded-full font-medium text-white transition-all duration-300 overflow-hidden"
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#9333EA] to-[#4F46E5] opacity-0 group-hover:opacity-100 transition-all duration-500" />
+                        <div className="absolute inset-0 bg-[url('/noise.png')] opacity-10" />
+                        <div className="relative z-10 flex items-center gap-2">
+                          <img src={ExorixLogo} alt="" className="w-5 h-5" />
+                          <span className="relative">
+                            Join Tournament
+                            <motion.div
+                              className="absolute bottom-0 left-0 w-full h-[1px] bg-white/50"
+                              initial={{ scaleX: 0 }}
+                              animate={{ scaleX: 1 }}
+                              transition={{ duration: 0.3, delay: 0.2 }}
+                            />
                     </span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                          <ArrowRight className="w-5 h-5 ml-1 group-hover:translate-x-1 transition-transform" />
+                        </div>
+                      </motion.button>
                   </Link>
-                </AnimatedButton>
-              </FadeInUp>
-              
-              <FadeInUp delay={0.4}>
-                <AnimatedButton>
-                  <Link
-                    to="/tournaments"
-                    className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-medium rounded-full bg-gray-800/50 text-white backdrop-blur-sm border border-gray-700/50 overflow-hidden transition-all duration-300 hover:scale-105 hover:border-indigo-500/50"
-                  >
-                    Browse Tournaments
-                    <Gamepad2 className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
-                  </Link>
-                </AnimatedButton>
-              </FadeInUp>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="group relative flex items-center gap-2 px-8 py-4 bg-white/5 text-white rounded-full font-medium transition-all duration-300 border border-white/10 hover:border-white/20 overflow-hidden"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300" />
+                      <div className="relative z-10 flex items-center gap-2">
+                        Learn More
+                        <ExternalLink className="w-5 h-5 ml-1 group-hover:translate-x-1 transition-transform" />
+                      </div>
+                    </motion.button>
             </div>
 
-            {/* Stats */}
-            <div className="mt-20 grid grid-cols-2 gap-8 sm:grid-cols-4">
-              <FadeIn delay={0.5}>
-                <div className="flex flex-col items-center p-6 rounded-2xl bg-gray-800/30 backdrop-blur-sm border border-gray-700/50">
-                  <span className="text-4xl font-bold text-indigo-400">50K+</span>
-                  <span className="mt-2 text-gray-400">Active Players</span>
+                  {/* Stats Section */}
+                  <div className="grid grid-cols-3 gap-6">
+                    {stats.map((stat, index) => (
+                      <motion.div
+                        key={stat.label}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 + index * 0.1 }}
+                        whileHover={{ y: -5 }}
+                        className="group relative bg-white/[0.02] backdrop-blur-xl rounded-2xl p-6 border border-white/[0.05] hover:border-white/[0.1] transition-all duration-300"
+                      >
+                        <div 
+                          className="absolute inset-0 bg-gradient-to-r opacity-0 group-hover:opacity-100 transition-all duration-300 rounded-2xl" 
+                          style={{ background: `linear-gradient(45deg, ${stat.color})`, opacity: 0.05 }} 
+                        />
+                        <div className="relative z-10">
+                          <div className="flex items-center gap-3 mb-3">
+                            <stat.icon className={`w-6 h-6 transition-all duration-300 bg-gradient-to-r ${stat.color} bg-clip-text text-transparent`} />
+                            <Zap className="w-4 h-4 text-white/30 group-hover:text-white/50 transition-colors" />
                 </div>
-              </FadeIn>
-              <FadeIn delay={0.6}>
-                <div className="flex flex-col items-center p-6 rounded-2xl bg-gray-800/30 backdrop-blur-sm border border-gray-700/50">
-                  <span className="text-4xl font-bold text-purple-400">100+</span>
-                  <span className="mt-2 text-gray-400">Daily Tournaments</span>
+                          <div className="text-3xl font-bold text-white group-hover:scale-105 transition-transform duration-300">
+                            {stat.value}
                 </div>
-              </FadeIn>
-              <FadeIn delay={0.7}>
-                <div className="flex flex-col items-center p-6 rounded-2xl bg-gray-800/30 backdrop-blur-sm border border-gray-700/50">
-                  <span className="text-4xl font-bold text-pink-400">$500K</span>
-                  <span className="mt-2 text-gray-400">Prize Pool</span>
+                          <div className="text-gray-400 group-hover:text-gray-300 transition-colors">
+                            {stat.label}
                 </div>
-              </FadeIn>
-              <FadeIn delay={0.8}>
-                <div className="flex flex-col items-center p-6 rounded-2xl bg-gray-800/30 backdrop-blur-sm border border-gray-700/50">
-                  <span className="text-4xl font-bold text-amber-400">24/7</span>
-                  <span className="mt-2 text-gray-400">Support</span>
+                          <div className="mt-2 text-sm text-gray-500 group-hover:text-gray-400 transition-colors">
+                            {stat.description}
                 </div>
-              </FadeIn>
+            </div>
+                        <div className="absolute bottom-0 left-0 w-full h-1 overflow-hidden rounded-b-2xl">
+                          <motion.div
+                            className="w-full h-full bg-gradient-to-r"
+                            style={{ background: `linear-gradient(to right, ${stat.color})` }}
+                            initial={{ x: "-100%" }}
+                            whileHover={{ x: "0%" }}
+                            transition={{ duration: 0.3 }}
+                          />
+          </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+        </div>
+
+              {/* Right Content - Game Cards */}
+              <div className="flex-1 relative ml-20">
+                <div className="grid grid-cols-2 gap-6 relative" style={{ height: '80vh' }}>
+                  {popularGames.map((game, index) => (
+                    <motion.div
+                      key={game.name}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 * index }}
+                      whileHover={{ scale: 1.02 }}
+                      className="relative rounded-2xl overflow-hidden group perspective-1000"
+                      onHoverStart={() => setHoveredImage(index)}
+                      onHoverEnd={() => setHoveredImage(null)}
+                    >
+                      <motion.div
+                        className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 opacity-0 group-hover:opacity-100 transition-all duration-300 z-10"
+                      />
+                      <motion.div
+                        className="absolute inset-0 bg-black/20 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-300 z-20"
+                      />
+                      <motion.img
+                        src={game.image}
+                        alt={game.name}
+                        className="absolute inset-0 w-full h-full object-cover transform transition-transform duration-700"
+                        style={{
+                          transformStyle: "preserve-3d",
+                          transform: hoveredImage === index ? "scale(1.1) rotateY(5deg)" : "scale(1) rotateY(0deg)"
+                        }}
+                      />
+                      <AnimatePresence>
+                        {hoveredImage === index && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 20, rotateX: -20 }}
+                            animate={{ opacity: 1, y: 0, rotateX: 0 }}
+                            exit={{ opacity: 0, y: 20, rotateX: 20 }}
+                            transition={{ duration: 0.3 }}
+                            className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-6 flex flex-col justify-end z-30 backdrop-blur-sm"
+                          >
+                            <motion.h3 
+                              className="text-xl font-bold text-white mb-2"
+                              initial={{ x: -20 }}
+                              animate={{ x: 0 }}
+                              transition={{ duration: 0.3, delay: 0.1 }}
+                            >
+                              {game.name}
+                            </motion.h3>
+                            <motion.div 
+                              className="flex items-center gap-4 text-gray-300"
+                              initial={{ x: -20 }}
+                              animate={{ x: 0 }}
+                              transition={{ duration: 0.3, delay: 0.2 }}
+                            >
+                              <div className="flex items-center gap-2">
+                                <Users className="w-4 h-4" />
+                                <span>{game.players}</span>
+          </div>
+                              <div className="flex items-center gap-2">
+                                <Calendar className="w-4 h-4" />
+                                <span>{game.tournaments}</span>
+        </div>
+                            </motion.div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Scroll Indicator */}
-        <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-bounce">
-          <div className="w-6 h-10 rounded-full border-2 border-white/30 flex items-start justify-center p-1">
-            <div className="w-1 h-2 bg-white/50 rounded-full animate-scroll" />
-          </div>
-        </div>
+        {/* Enhanced styles */}
+        <style>{`
+          @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.05); opacity: 0.4; }
+          }
+
+          @keyframes firefly {
+            0% { transform: translate(0, 0) scale(0); opacity: 0; }
+            50% { opacity: 0.5; }
+            100% { transform: translate(100px, -100px) scale(1); opacity: 0; }
+          }
+
+          .perspective-1000 {
+            perspective: 1000px;
+          }
+
+          .animate-gradient {
+            background-size: 200% 200%;
+            animation: gradient 8s linear infinite;
+          }
+
+          @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+          }
+
+          @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+          }
+
+          @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+          }
+
+          @keyframes glow {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.2); }
+          }
+
+          .hover-glow:hover {
+            animation: glow 2s ease-in-out infinite;
+          }
+        `}</style>
       </div>
 
       {/* Features Section */}
@@ -864,73 +1256,6 @@ const Home = () => {
           </div>
         </div>
       </div>
-
-      <style jsx="true">{`
-        @keyframes float {
-          0% { transform: translateY(0) rotate(0deg) scale(1); }
-          33% { transform: translateY(-30px) rotate(5deg) scale(1.1); }
-          66% { transform: translateY(20px) rotate(-5deg) scale(0.9); }
-          100% { transform: translateY(0) rotate(0deg) scale(1); }
-        }
-        .animate-float {
-          animation: float 20s ease-in-out infinite;
-        }
-
-        @keyframes particle {
-          0% { 
-            transform: translateY(0) translateX(0);
-            opacity: 0;
-          }
-          20% {
-            opacity: 1;
-          }
-          80% {
-            opacity: 1;
-          }
-          100% { 
-            transform: translateY(-100vh) translateX(100px);
-            opacity: 0;
-          }
-        }
-        .animate-particle {
-          animation: particle 15s linear infinite;
-        }
-
-        @keyframes line {
-          0% {
-            transform: translateX(-100%) scaleY(1);
-            opacity: 0;
-          }
-          50% {
-            transform: translateX(0) scaleY(1);
-            opacity: 0.5;
-          }
-          100% {
-            transform: translateX(100%) scaleY(1);
-            opacity: 0;
-          }
-        }
-        .animate-line {
-          animation: line 10s linear infinite;
-        }
-
-        @keyframes grid {
-          0% { transform: translateX(0) translateY(0); }
-          100% { transform: translateX(-50%) translateY(-50%); }
-        }
-        .animate-grid {
-          animation: grid 50s linear infinite;
-        }
-
-        @keyframes scroll {
-          0% { transform: translateY(0); }
-          50% { transform: translateY(6px); }
-          100% { transform: translateY(0); }
-        }
-        .animate-scroll {
-          animation: scroll 2s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   );
 };
