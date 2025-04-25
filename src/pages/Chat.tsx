@@ -136,17 +136,8 @@ const Chat = () => {
   const firebaseUser = user as FirebaseUser;
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [channels] = useState<Channel[]>([
-    { id: 'rules', name: 'Rules & Announcements', description: 'Community guidelines and important updates', icon: '📢', isPrivate: false, members: 0, isRules: true },
-    { id: 'general', name: 'General', description: 'General gaming discussion', icon: '🎮', isPrivate: false, members: 0 },
-    { id: 'esports', name: 'Esports', description: 'Competitive gaming and tournaments', icon: '🏆', isPrivate: false, members: 0 },
-    { id: 'monad', name: 'Monad Network', description: 'NFT and blockchain gaming', icon: '💎', isPrivate: false, members: 0 },
-    { id: 'base', name: 'Base Track', description: 'Base Track gaming community', icon: '🚀', isPrivate: false, members: 0 },
-    { id: 'tournaments', name: 'Tournaments', description: 'Tournament announcements and results', icon: '🎯', isPrivate: false, members: 0 },
-    { id: 'team-finder', name: 'Team Finder', description: 'Find teammates for your favorite games', icon: '👥', isPrivate: false, members: 0 },
-    { id: 'game-lfg', name: 'Game LFG', description: 'Looking for group in specific games', icon: '🎲', isPrivate: false, members: 0 },
-    { id: 'trading', name: 'Trading', description: 'Trade in-game items and NFTs', icon: '🔄', isPrivate: false, members: 0 },
-  ]);
+  const [channels, setChannels] = useState<Channel[]>([]);
+  const [isLoadingChannels, setIsLoadingChannels] = useState(true);
   const [activeChannel, setActiveChannel] = useState<string>('rules');
   const [onlineUsers, setOnlineUsers] = useState<number>(0);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
@@ -270,82 +261,100 @@ const Chat = () => {
     }
   }, [messages, aiTypingText, isGeneratingResponse]);
 
-  // Set up real-time message listener with initial load handling
+  // Fetch channels from Firestore
+  useEffect(() => {
+    const fetchChannels = async () => {
+      try {
+        const channelsRef = collection(db, 'channels');
+        const channelsSnapshot = await getDocs(channelsRef);
+        
+        if (channelsSnapshot.empty) {
+          // Initialize default channels if none exist
+          const defaultChannels = [
+            { id: 'rules', name: 'Rules & Announcements', description: 'Community guidelines and important updates', icon: '📢', isPrivate: false, members: 0, isRules: true },
+            { id: 'general', name: 'General', description: 'General gaming discussion', icon: '🎮', isPrivate: false, members: 0 },
+            { id: 'esports', name: 'Esports', description: 'Competitive gaming and tournaments', icon: '🏆', isPrivate: false, members: 0 },
+            { id: 'monad', name: 'Monad Network', description: 'NFT and blockchain gaming', icon: '💎', isPrivate: false, members: 0 },
+            { id: 'base', name: 'Base Track', description: 'Base Track gaming community', icon: '🚀', isPrivate: false, members: 0 },
+            { id: 'tournaments', name: 'Tournaments', description: 'Tournament announcements and results', icon: '🎯', isPrivate: false, members: 0 },
+            { id: 'team-finder', name: 'Team Finder', description: 'Find teammates for your favorite games', icon: '👥', isPrivate: false, members: 0 },
+            { id: 'game-lfg', name: 'Game LFG', description: 'Looking for group in specific games', icon: '🎲', isPrivate: false, members: 0 },
+            { id: 'trading', name: 'Trading', description: 'Trade in-game items and NFTs', icon: '🔄', isPrivate: false, members: 0 },
+          ];
+
+          // Create each default channel in Firestore
+          for (const channel of defaultChannels) {
+            await addDoc(collection(db, 'channels'), channel);
+          }
+
+          setChannels(defaultChannels);
+        } else {
+          const channelsData = channelsSnapshot.docs.map(doc => ({
+            ...doc.data(),
+            id: doc.id
+          })) as Channel[];
+          setChannels(channelsData);
+        }
+        setIsLoadingChannels(false);
+      } catch (error) {
+        console.error('Error fetching channels:', error);
+        toast.error('Failed to load channels');
+        setIsLoadingChannels(false);
+      }
+    };
+
+    fetchChannels();
+  }, []);
+
+  // Update real-time message listener
   useEffect(() => {
     if (!channelId || !user) return;
 
+    const messagesRef = collection(db, 'channels', channelId, 'messages');
     const q = query(
-      collection(db, 'messages'),
-      where('channel', '==', channelId),
+      messagesRef,
       orderBy('timestamp', 'asc'),
       limit(100)
     );
 
-    const unsubscribe = onSnapshot(
-      q,
-      { includeMetadataChanges: true },
-      (snapshot) => {
-        const newMessages: Message[] = [];
-        
-        snapshot.docChanges().forEach((change) => {
-          const messageData = { id: change.doc.id, ...change.doc.data() } as Message;
-          
-          if (change.type === 'added') {
-            newMessages.push(messageData);
-          }
-        });
-
-        setMessages((prevMessages) => {
-          const messageMap = new Map();
-          
-          prevMessages.forEach((msg) => {
-            messageMap.set(msg.id, msg);
-          });
-          
-          newMessages.forEach((msg) => {
-            messageMap.set(msg.id, msg);
-          });
-          
-          const allMessages = Array.from(messageMap.values());
-          return allMessages.sort((a, b) => {
-            const timeA = a.timestamp?.seconds || 0;
-            const timeB = b.timestamp?.seconds || 0;
-            return timeA - timeB;
-          });
-        });
-
-        // Scroll to bottom on initial load
-        if (isInitialLoad) {
-          setTimeout(() => {
-            scrollToBottom('auto');
-            setIsInitialLoad(false);
-          }, 100);
-        } else {
-          scrollToBottom();
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newMessages: Message[] = [];
+      
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added' || change.type === 'modified') {
+          const messageData = {
+            id: change.doc.id,
+            ...change.doc.data()
+          } as Message;
+          newMessages.push(messageData);
         }
-      },
-      (error) => {
-        console.error('Error listening to messages:', error);
-        toast.error('Failed to load messages. Please refresh the page.');
-      }
-    );
+      });
 
-    // Cleanup listener on unmount or channel change
+      setMessages((prevMessages) => {
+        const messageMap = new Map();
+        [...prevMessages, ...newMessages].forEach((msg) => {
+          messageMap.set(msg.id, msg);
+        });
+        return Array.from(messageMap.values()).sort((a, b) => {
+          const timeA = a.timestamp?.seconds || 0;
+          const timeB = b.timestamp?.seconds || 0;
+          return timeA - timeB;
+        });
+      });
+
+      if (isInitialLoad) {
+        setTimeout(() => {
+          scrollToBottom('auto');
+          setIsInitialLoad(false);
+        }, 100);
+      }
+    });
+
     return () => {
       unsubscribe();
-      setIsInitialLoad(true); // Reset for next channel
+      setIsInitialLoad(true);
     };
   }, [channelId, user]);
-
-  // Additional effect to handle initial scroll after messages load
-  useEffect(() => {
-    if (messages.length > 0 && isInitialLoad) {
-      setTimeout(() => {
-        scrollToBottom('auto');
-        setIsInitialLoad(false);
-      }, 100);
-    }
-  }, [messages, isInitialLoad]);
 
   // Filter messages based on search query
   useEffect(() => {
@@ -400,6 +409,7 @@ const Chat = () => {
     return text;
   };
 
+  // Update handleSendMessage to use subcollection
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!firebaseUser || !newMessage.trim() || !channelId) return;
@@ -426,58 +436,15 @@ const Chat = () => {
         isAI: false
       };
 
-      // Add user message and scroll
-      setMessages(prevMessages => {
-        const newMessages = [...prevMessages, { ...userMessageData, id: 'temp-' + now.getTime() }];
-        setTimeout(() => scrollToBottom('auto'), 0);
-        return newMessages;
-      });
-
-      await addDoc(collection(db, 'messages'), userMessageData);
+      // Add message to channel's messages subcollection
+      await addDoc(collection(db, 'channels', channelId, 'messages'), userMessageData);
 
       if (isAIQuery) {
         const aiQuery = messageText.substring(7).trim();
-        const typingId = 'typing-' + now.getTime();
-
-        // Add initial typing message and scroll
-        setMessages(prevMessages => {
-          const newMessages = [...prevMessages, {
-            id: typingId,
-            text: '',
-            userId: 'ai',
-            username: 'Exorix AI',
-            userAvatar: AI_AVATAR_URL,
-            timestamp: serverTimestamp(),
-            localTimestamp: now.getTime(),
-            channel: channelId,
-            isAdmin: true,
-            isModerator: true,
-            reactions: {},
-            isPinned: false,
-            isAnnouncement: false,
-            isAI: true,
-            isTyping: true
-          }];
-          setTimeout(() => scrollToBottom('auto'), 0);
-          return newMessages;
-        });
-
+        
         try {
-          // Get AI response
           const aiResponse = await generateResponse(aiQuery, 'en');
           
-          // Clear typing message for animation
-          setMessages(prevMessages => {
-            const updatedMessages = prevMessages.map(msg => 
-              msg.id === typingId ? { ...msg, text: '' } : msg
-            );
-            return updatedMessages;
-          });
-
-          // Animate typing with real-time scrolling
-          await simulateTyping(aiResponse);
-
-          // Send final AI response
           const aiMessageData = {
             text: aiResponse,
             userId: 'ai',
@@ -494,18 +461,9 @@ const Chat = () => {
             isAI: true
           };
 
-          // Update with final message and scroll
-          setMessages(prevMessages => {
-            const filteredMessages = prevMessages.filter(msg => msg.id !== typingId);
-            const newMessages = [...filteredMessages, { ...aiMessageData, id: 'ai-' + Date.now() }];
-            setTimeout(() => scrollToBottom('auto'), 0);
-            return newMessages;
-          });
-
-          await addDoc(collection(db, 'messages'), aiMessageData);
+          await addDoc(collection(db, 'channels', channelId, 'messages'), aiMessageData);
         } catch (error) {
           console.error('Error getting AI response:', error);
-          setMessages(prevMessages => prevMessages.filter(msg => msg.id !== typingId));
           toast.error('Failed to get AI response. Please try again.');
         }
       }
@@ -562,11 +520,12 @@ const Chat = () => {
     toast.success(`Now playing: ${game}`);
   };
 
+  // Update handleReaction to use subcollection
   const handleReaction = async (messageId: string, reaction: string) => {
-    if (!user) return;
+    if (!user || !channelId) return;
     
     try {
-      const messageRef = doc(db, 'messages', messageId);
+      const messageRef = doc(db, 'channels', channelId, 'messages', messageId);
       const message = messages.find(m => m.id === messageId);
       
       if (!message) return;
@@ -575,10 +534,8 @@ const Chat = () => {
       const userReactions = reactions[reaction] || [];
       
       if (userReactions.includes(user.uid)) {
-        // Remove reaction
         reactions[reaction] = userReactions.filter(id => id !== user.uid);
       } else {
-        // Add reaction
         reactions[reaction] = [...userReactions, user.uid];
       }
       
