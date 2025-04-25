@@ -437,7 +437,7 @@ const Products = () => {
 
   // Fetch products from Firestore
   const fetchProducts = async () => {
-    setLoading(true);
+      setLoading(true);
     try {
       // Fetch all products
       const productsRef = collection(db, 'products');
@@ -607,13 +607,13 @@ const Products = () => {
           onClick={(e) => e.stopPropagation()}
           className="bg-[#0F1115] rounded-2xl p-6 max-w-4xl w-full border border-gray-800/50 relative"
         >
-          <button
-            onClick={onClose}
+            <button
+              onClick={onClose}
             className="absolute top-4 right-4 p-2 rounded-xl bg-gray-800/50 hover:bg-gray-700/50 transition-colors"
-            aria-label="Close product details"
-          >
-            <X className="w-6 h-6 text-gray-400" />
-          </button>
+              aria-label="Close product details"
+            >
+              <X className="w-6 h-6 text-gray-400" />
+            </button>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Left Column - Images */}
@@ -627,17 +627,17 @@ const Products = () => {
               </div>
               <div className="grid grid-cols-4 gap-4">
                 {[product.image, ...product.features.slice(0, 3).map((_, i) => product.image)].map((img, index) => (
-                  <button
+                    <button
                     key={index}
                     onClick={() => setSelectedImage(img)}
-                    className={`aspect-square rounded-lg overflow-hidden border-2 transition-colors ${
+                      className={`aspect-square rounded-lg overflow-hidden border-2 transition-colors ${
                       selectedImage === img ? 'border-indigo-500' : 'border-transparent'
-                    }`}
-                  >
+                      }`}
+                    >
                     <img src={img} alt={`${product.name} view ${index + 1}`} className="w-full h-full object-cover" />
-                  </button>
-                ))}
-              </div>
+                    </button>
+                  ))}
+                </div>
             </div>
 
             {/* Right Column - Details */}
@@ -723,26 +723,26 @@ const Products = () => {
 
               <div className="border-t border-gray-800/50 pt-6">
                 <div className="flex space-x-6 mb-6">
-                  {(['details', 'specs', 'reviews'] as const).map((tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => setActiveTab(tab)}
+                {(['details', 'specs', 'reviews'] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
                       className={`relative px-2 py-2 text-sm font-medium transition-colors ${
-                        activeTab === tab
+                      activeTab === tab
                           ? 'text-indigo-400'
-                          : 'text-gray-400 hover:text-gray-300'
-                      }`}
-                    >
-                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        : 'text-gray-400 hover:text-gray-300'
+                    }`}
+                  >
+                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
                       {activeTab === tab && (
                         <motion.div
                           layoutId="activeTab"
                           className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500"
                         />
                       )}
-                    </button>
-                  ))}
-                </div>
+                  </button>
+                ))}
+              </div>
 
                 <AnimatePresence mode="wait">
                   <motion.div
@@ -752,32 +752,32 @@ const Products = () => {
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.2 }}
                   >
-                    {activeTab === 'details' && (
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          {product.features.map((feature, index) => (
+              {activeTab === 'details' && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                      {product.features.map((feature, index) => (
                             <div key={index} className="flex items-start gap-2">
-                              <Check className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                          <Check className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
                               <span className="text-gray-300">{feature}</span>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                      ))}
+                  </div>
+                </div>
+              )}
 
-                    {activeTab === 'specs' && (
-                      <div className="grid grid-cols-2 gap-4">
-                        {Object.entries(product.specifications).map(([key, value]) => (
-                          <div key={key} className="space-y-1">
-                            <dt className="text-sm text-gray-400">{key}</dt>
-                            <dd className="text-white">{value}</dd>
-                          </div>
-                        ))}
+              {activeTab === 'specs' && (
+                  <div className="grid grid-cols-2 gap-4">
+                    {Object.entries(product.specifications).map(([key, value]) => (
+                      <div key={key} className="space-y-1">
+                        <dt className="text-sm text-gray-400">{key}</dt>
+                        <dd className="text-white">{value}</dd>
                       </div>
-                    )}
+                    ))}
+                </div>
+              )}
 
-                    {activeTab === 'reviews' && (
-                      <div className="space-y-4">
+              {activeTab === 'reviews' && (
+                <div className="space-y-4">
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-2">
                             <Star className="w-6 h-6 text-amber-400 fill-amber-400" />
@@ -801,21 +801,21 @@ const Products = () => {
                             }
                           ].map((review, index) => (
                             <div key={index} className="border-b border-gray-800/50 pb-4">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="font-medium text-white">{review.user}</span>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium text-white">{review.user}</span>
                                 <div className="flex items-center gap-1">
                                   {Array.from({ length: review.rating }).map((_, i) => (
                                     <Star key={i} className="w-4 h-4 text-amber-400 fill-amber-400" />
                                   ))}
-                                </div>
-                              </div>
-                              <p className="text-gray-300 mb-2">{review.comment}</p>
-                              <span className="text-sm text-gray-500">{review.date}</span>
-                            </div>
-                          ))}
                         </div>
                       </div>
-                    )}
+                              <p className="text-gray-300 mb-2">{review.comment}</p>
+                              <span className="text-sm text-gray-500">{review.date}</span>
+                    </div>
+                  ))}
+                        </div>
+                </div>
+              )}
                   </motion.div>
                 </AnimatePresence>
               </div>
@@ -918,18 +918,18 @@ const Products = () => {
     wishlist: string[];
   }) => {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
         whileHover={{ y: -10 }}
         onClick={() => onProductSelect(product)}
         className="group relative bg-[#0F1115] rounded-2xl border border-gray-800/50 overflow-hidden transition-all duration-300 hover:border-indigo-500/50 h-full cursor-pointer"
-      >
+    >
         <div className="relative aspect-[4/3] overflow-hidden bg-[#0D0F14]">
           <motion.img
-            src={product.image}
-            alt={product.name}
+          src={product.image}
+          alt={product.name}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
           <div className="absolute top-4 right-4 flex flex-col gap-2">
@@ -959,7 +959,7 @@ const Products = () => {
           {product.stock === 0 && (
             <div className="absolute bottom-4 left-4 px-3 py-1.5 rounded-lg bg-red-500/80 backdrop-blur-sm text-white text-sm font-medium">
               Out of Stock
-            </div>
+        </div>
           )}
         </div>
 
@@ -970,21 +970,21 @@ const Products = () => {
               <div className="flex items-center gap-1">
                 <Star className="h-4 w-4 text-amber-400 fill-amber-400" />
                 <span className="text-sm font-medium text-amber-400">{product.rating}</span>
-              </div>
-            </div>
+        </div>
+      </div>
             <h3 className="text-lg font-semibold text-white group-hover:text-indigo-400 transition-colors line-clamp-1">
-              {product.name}
-            </h3>
+            {product.name}
+          </h3>
             <p className="text-sm text-gray-400 line-clamp-2">{product.description}</p>
-          </div>
+        </div>
 
           <div className="flex items-center justify-between pt-2">
-            <div className="space-y-1">
+          <div className="space-y-1">
               <span className="text-xl font-bold text-white">${product.price.toFixed(2)}</span>
               {product.originalPrice > product.price && (
                 <span className="text-sm text-gray-500 line-through ml-2">${product.originalPrice.toFixed(2)}</span>
               )}
-            </div>
+          </div>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -992,19 +992,19 @@ const Products = () => {
                 e.stopPropagation();
                 onAddToCart(product);
               }}
-              disabled={product.stock === 0}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                product.stock === 0 
-                  ? 'bg-gray-800 text-gray-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700'
-              } transition-all duration-300`}
+                disabled={product.stock === 0}
+                className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                  product.stock === 0 
+                    ? 'bg-gray-800 text-gray-400 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700'
+                } transition-all duration-300`}
             >
               {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
             </motion.button>
-          </div>
         </div>
-      </motion.div>
-    );
+      </div>
+    </motion.div>
+  );
   };
 
   const ProductsSection = () => {
@@ -1016,47 +1016,47 @@ const Products = () => {
       <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-12">
         <div className="mb-8 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <SearchBar
-            value={searchQuery}
+                value={searchQuery}
             onChange={handleSearchChange}
             onSearch={handleSearchChange}
-          />
+              />
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
+              <button
+                onClick={() => setShowFilters(!showFilters)}
               className="flex items-center gap-2 px-4 py-2.5 bg-gray-800/80 backdrop-blur-sm rounded-xl text-gray-300 hover:bg-gray-700/80 transition-all duration-300"
-            >
+              >
               <Filter className="w-5 h-5" />
               <span>Filters</span>
-            </button>
-            <select
-              value={sortBy}
+              </button>
+              <select
+                value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               className="px-4 py-2.5 bg-gray-800/80 backdrop-blur-sm rounded-xl text-gray-300 hover:bg-gray-700/80 transition-all duration-300 appearance-none cursor-pointer pr-10 min-w-[160px]"
-              aria-label="Sort products by"
+                aria-label="Sort products by"
             >
               <option value="featured">Featured</option>
               <option value="price-low">Price: Low to High</option>
               <option value="price-high">Price: High to Low</option>
               <option value="rating">Highest Rated</option>
-            </select>
+              </select>
+            </div>
           </div>
-        </div>
 
         <div className="mb-8 flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
           {categories.map((category) => (
-            <button
+                <button
               key={category.id}
               onClick={() => setSelectedCategory(category.id)}
               className={`px-6 py-2.5 rounded-xl whitespace-nowrap transition-all duration-300 ${
                 selectedCategory === category.id
                   ? 'bg-indigo-600 text-white'
                   : 'bg-gray-800/50 text-gray-300 hover:bg-gray-700/50'
-              }`}
-            >
+                  }`}
+                >
               {category.name}
-            </button>
+                </button>
           ))}
-        </div>
+            </div>
 
         <div className="relative">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
@@ -1083,7 +1083,7 @@ const Products = () => {
                 </motion.div>
               ))}
             </AnimatePresence>
-          </div>
+              </div>
 
           {/* Loading indicator */}
           {loading && (
@@ -1097,12 +1097,12 @@ const Products = () => {
                 <div className="w-3 h-3 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '150ms' }} />
                 <div className="w-3 h-3 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '300ms' }} />
               </motion.div>
-            </div>
-          )}
+          </div>
+        )}
 
           {/* No more products indicator */}
           {!loading && products.length > 0 && (
-            <motion.div
+                <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="text-center py-8 text-gray-400"
@@ -1114,13 +1114,13 @@ const Products = () => {
           {/* Empty state */}
           {products.length === 0 && !loading && (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
               className="text-center py-32"
-            >
+                >
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-800/50 mb-4">
                 <Search className="w-8 h-8 text-gray-400" />
-              </div>
+          </div>
               <h3 className="text-xl font-semibold text-white mb-2">No products found</h3>
               <p className="text-gray-400 mb-6">Try adjusting your search or filters</p>
               <button
@@ -1134,14 +1134,14 @@ const Products = () => {
                 Reset Filters
               </button>
             </motion.div>
-          )}
+        )}
         </div>
       </div>
     );
   };
 
   if (loading) {
-    return (
+              return (
       <div className="min-h-screen bg-[#0A0A0B] flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
@@ -1178,24 +1178,24 @@ const Products = () => {
               Premium gaming gear crafted for champions. Experience the next level of gaming with Exorix.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
                 className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 font-medium"
-              >
+            >
                 Shop Collection
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
                 className="px-8 py-4 bg-gray-800/80 backdrop-blur-sm text-white rounded-lg hover:bg-gray-700/80 transition-all duration-300 font-medium"
-              >
+            >
                 View Deals
-              </motion.button>
+            </motion.button>
             </div>
           </motion.div>
+          </div>
         </div>
-      </div>
 
       <div className="py-16 bg-gradient-to-b from-gray-900/50 to-transparent">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1234,13 +1234,13 @@ const Products = () => {
                       Shop Now
                       <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-2" />
                     </span>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
         </div>
       </div>
+    </motion.div>
+            ))}
+          </div>
+            </div>
+          </div>
 
       <div className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1319,7 +1319,7 @@ const Products = () => {
             ) : latestDeals.length > 0 ? (
               latestDeals.map(product => (
                 <ProductCard
-                  key={product.id}
+                key={product.id}
                   product={product}
                   onProductSelect={setSelectedProduct}
                   onToggleWishlist={toggleWishlist}
@@ -1332,10 +1332,10 @@ const Products = () => {
               <div className="col-span-4 py-12 text-center">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-800/50 mb-4">
                   <Bell className="w-8 h-8 text-gray-400" />
-                </div>
+                  </div>
                 <h3 className="text-xl font-semibold text-white mb-2">No deals available</h3>
                 <p className="text-gray-400">Check back later for new deals!</p>
-              </div>
+                </div>
             )}
           </div>
         </div>
