@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db, createEvent, updateEvent, createBlog, updateBlog, createJob } from '../../firebase';
-import { doc, getDoc, updateDoc, collection, getDocs, query, where, addDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, getDocs, query, where, addDoc, setDoc, orderBy } from 'firebase/firestore';
 import { Timestamp } from 'firebase/firestore';
 import {
   User,
@@ -29,7 +29,8 @@ import {
   DollarSign,
   Gamepad2,
   Smile,
-  Check
+  Check,
+  ShoppingBag
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import ProfileAvatar from '../../components/ProfileAvatar';
@@ -136,6 +137,10 @@ const UserProfile = () => {
   const [selectedStyle, setSelectedStyle] = useState<string>('avataaars');
   const [avatarSeed, setAvatarSeed] = useState<string>(() => user?.email?.split('@')[0] || 'default');
   const [currentAvatar, setCurrentAvatar] = useState<string>('');
+
+  // Add orders state
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
 
   useEffect(() => {
     if (userData?.avatar) {
@@ -589,6 +594,67 @@ const UserProfile = () => {
     fetchStats();
   }, [user]);
 
+  // Add fetchOrders function
+  const fetchOrders = async () => {
+    if (!user?.email) return;
+    
+    setLoadingOrders(true);
+    try {
+      const ordersCollection = collection(db, 'orders');
+      let ordersData: Order[] = [];
+
+      try {
+        // Try with the sorted query first
+        const q = query(ordersCollection, 
+          where('userEmail', '==', user.email),
+          orderBy('createdAt', 'desc')
+        );
+        const ordersSnapshot = await getDocs(q);
+        ordersData = ordersSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Order[];
+      } catch (indexError: any) {
+        // If index doesn't exist yet, fall back to basic query
+        if (indexError.code === 'failed-precondition') {
+          const q = query(ordersCollection, 
+            where('userEmail', '==', user.email)
+          );
+          const ordersSnapshot = await getDocs(q);
+          ordersData = ordersSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as Order[];
+
+          // Sort manually
+          ordersData.sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
+
+          // Show notification about index creation
+          toast('Creating database index for better performance. Please wait a moment and try again.', {
+            icon: 'ℹ️',
+            duration: 5000,
+          });
+        } else {
+          throw indexError;
+        }
+      }
+      
+      setOrders(ordersData);
+    } catch (err) {
+      console.error('Error fetching orders:', err);
+      toast.error('Failed to load orders');
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
+  // Add useEffect to fetch orders when tab changes to orders
+  useEffect(() => {
+    if (activeTab === 'orders') {
+      fetchOrders();
+    }
+  }, [activeTab, user?.email]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0A0A0B]">
@@ -730,6 +796,18 @@ const UserProfile = () => {
           >
             <Briefcase className="w-5 h-5" />
             <span>Jobs</span>
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setActiveTab('orders')}
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+              activeTab === 'orders' ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700/50'
+            }`}
+          >
+            <ShoppingBag className="w-5 h-5" />
+            <span>Orders</span>
           </motion.button>
 
           <motion.button
@@ -985,15 +1063,6 @@ const UserProfile = () => {
               >
             <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-white">Recent Events</h2>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                onClick={() => setShowCreateEventModal(true)}
-                    className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-              >
-                <PlusCircle className="w-5 h-5" />
-                <span>Create Event</span>
-                  </motion.button>
             </div>
 
                 {/* Events List */}
@@ -1037,9 +1106,9 @@ const UserProfile = () => {
             ) : (
                   <div className="text-center py-8">
                 <Calendar className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-2 text-sm font-medium text-white">No events yet</h3>
+                    <h3 className="mt-2 text-sm font-medium text-white">No events</h3>
                     <p className="mt-1 text-sm text-gray-400">
-                  Get started by creating your first event.
+                  You haven't registered for any events yet.
                 </p>
               </div>
             )}
@@ -1054,16 +1123,7 @@ const UserProfile = () => {
               >
             <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-white">Recent Blogs</h2>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setShowCreateBlogModal(true)}
-                    className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                  >
-                    <PlusCircle className="w-5 h-5" />
-                    <span>Create Blog</span>
-                  </motion.button>
-              </div>
+            </div>
 
                 {/* Blogs List */}
                 {userData.blogs && userData.blogs.length > 0 ? (
@@ -1099,9 +1159,9 @@ const UserProfile = () => {
                 ) : (
                   <div className="text-center py-8">
                     <FileText className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-2 text-sm font-medium text-white">No blogs yet</h3>
+                    <h3 className="mt-2 text-sm font-medium text-white">No blogs</h3>
                     <p className="mt-1 text-sm text-gray-400">
-                      Get started by creating your first blog post.
+                      No blog posts to display.
                     </p>
                   </div>
                 )}
@@ -1116,17 +1176,8 @@ const UserProfile = () => {
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-xl font-bold">All Events</h2>
-                <p className="text-gray-400 text-sm mt-1">Manage your events and registrations</p>
+                <p className="text-gray-400 text-sm mt-1">View your registered events</p>
               </div>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setShowCreateEventModal(true)}
-                className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-              >
-                <PlusCircle className="w-5 h-5" />
-                <span>Create Event</span>
-              </motion.button>
             </div>
 
             <div className="grid gap-6">
@@ -1174,17 +1225,8 @@ const UserProfile = () => {
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-xl font-bold">All Blogs</h2>
-                <p className="text-gray-400 text-sm mt-1">Manage your blog posts</p>
+                <p className="text-gray-400 text-sm mt-1">View your blog posts</p>
               </div>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setShowCreateBlogModal(true)}
-                className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-              >
-                <PlusCircle className="w-5 h-5" />
-                <span>Create Blog</span>
-              </motion.button>
             </div>
 
             <div className="grid gap-6">
@@ -1269,6 +1311,136 @@ const UserProfile = () => {
               </div>
               </div>
             )}
+
+        {/* Orders View */}
+        {activeTab === 'orders' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-bold">Your Orders</h2>
+                <p className="text-gray-400 text-sm mt-1">View and track your orders</p>
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => navigate('/products')}
+                className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                <ShoppingBag className="w-5 h-5" />
+                <span>Browse Products</span>
+              </motion.button>
+            </div>
+
+            {loadingOrders ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+                <span className="ml-3 text-gray-400">Loading orders...</span>
+              </div>
+            ) : orders.length > 0 ? (
+              <div className="grid gap-6">
+                {orders.map((order) => (
+                  <motion.div
+                    key={order.id}
+                    whileHover={{ scale: 1.01 }}
+                    className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50 hover:border-indigo-500/50 transition-all duration-300"
+                  >
+                    <div className="flex flex-col space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-lg font-medium text-white">Order #{order.id.slice(-6)}</h3>
+                          <p className="text-sm text-gray-400 mt-1">
+                            Placed on {order.createdAt.toDate().toLocaleDateString()}
+                          </p>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          order.status === 'completed' 
+                            ? 'bg-green-500/20 text-green-400'
+                            : order.status === 'processing'
+                            ? 'bg-yellow-500/20 text-yellow-400'
+                            : order.status === 'cancelled'
+                            ? 'bg-red-500/20 text-red-400'
+                            : 'bg-indigo-500/20 text-indigo-400'
+                        }`}>
+                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                        </span>
+                      </div>
+
+                      <div className="border-t border-gray-700/50 pt-4">
+                        <h4 className="text-sm font-medium text-gray-400 mb-2">Items</h4>
+                        <div className="space-y-3">
+                          {order.items.map((item, index) => (
+                            <div key={index} className="flex items-center justify-between">
+                              <div className="flex items-center space-x-4">
+                                <img
+                                  src={item.image}
+                                  alt={item.name}
+                                  className="w-12 h-12 rounded-lg object-cover"
+                                />
+                                <div>
+                                  <p className="text-white">{item.name}</p>
+                                  <p className="text-sm text-gray-400">Quantity: {item.quantity}</p>
+                                </div>
+                              </div>
+                              <p className="text-white">₹{item.price.toFixed(2)}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="border-t border-gray-700/50 pt-4 flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-400">Payment Method</p>
+                          <p className="text-white mt-1">{order.paymentMethod}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-gray-400">Total Amount</p>
+                          <p className="text-xl font-bold text-white mt-1">₹{order.totalAmount.toFixed(2)}</p>
+                        </div>
+                      </div>
+
+                      {order.shippingAddress && (
+                        <div className="border-t border-gray-700/50 pt-4">
+                          <h4 className="text-sm font-medium text-gray-400 mb-2">Shipping Address</h4>
+                          <p className="text-white">{order.shippingAddress.name}</p>
+                          <p className="text-gray-400 text-sm">{order.shippingAddress.address}</p>
+                          <p className="text-gray-400 text-sm">
+                            {order.shippingAddress.city}, {order.shippingAddress.country} {order.shippingAddress.zipCode}
+                          </p>
+                        </div>
+                      )}
+
+                      {order.transactionHash && (
+                        <div className="border-t border-gray-700/50 pt-4">
+                          <h4 className="text-sm font-medium text-gray-400 mb-2">Transaction Details</h4>
+                          <p className="text-gray-400 text-sm break-all">
+                            Hash: {order.transactionHash}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 bg-gray-800/30 backdrop-blur-sm rounded-2xl border border-gray-700/50">
+                <ShoppingBag className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-white">No orders yet</h3>
+                <p className="mt-1 text-sm text-gray-400">
+                  Start shopping to see your orders here.
+                </p>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => navigate('/products')}
+                  className="mt-6 inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  <ShoppingBag className="mr-2 h-5 w-5" />
+                  Browse Products
+                </motion.button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Settings View */}
         {activeTab === 'settings' && (

@@ -12,6 +12,7 @@ import AnimatedLayout from './components/AnimatedLayout';
 import BackgroundAnimation from './components/BackgroundAnimation';
 import GradientMesh from './components/GradientMesh';
 import LoadingScreen from './components/LoadingScreen';
+import ScrollToTop from './components/ScrollToTop';
 import preloadAssets from './utils/preloadAssets';
 import Home from './pages/Home';
 import About from './pages/About';
@@ -125,6 +126,7 @@ const AppContent = () => {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 relative">
+      <ScrollToTop />
       <Navbar />
       <AnimatedRoutes />
       {!isChatPage && !isProfilePage && <Footer />}

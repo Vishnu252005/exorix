@@ -190,6 +190,22 @@ npm install
 npm run dev
 ```
 
+### Login Credentials:
+
+#### Admin Access:
+```
+Email: admin@demo.com
+Password: test123
+```
+
+#### Demo User Access:
+```
+Email: user@example.com
+Password: test123
+```
+
+*Note: Users can create new accounts for testing purposes.*
+
 ---
 
 ## 🧬 Future Scope
