@@ -4,6 +4,8 @@
 
 > An AI-powered esports platform revolutionizing the gaming experience with advanced features and seamless integration.
 
+![Exorix Homepage](homepage.jpeg)
+
 ---
 
 ## 📌 Problem Statement
