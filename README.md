@@ -11,6 +11,8 @@
 ## 📌 Problem Statement
 
 **Problem Statement 1 – Weave AI magic with Groq**
+**Problem Statement 2 – Unleash Blockchain with Monad**
+**Problem Statement 4 – Craft the future for Onchain Consumer Experience with base**
 
 ---
 
@@ -154,7 +156,6 @@ By leveraging cutting-edge technologies like Groq AI, Base blockchain, and Monad
   - Customer reviews and ratings
   - Secure payment processing
 
-![Product Showcase](https://github.com/user-attachments/assets/d9bf7301-3cda-4116-be74-1072411899fb)
 
 ---
 
