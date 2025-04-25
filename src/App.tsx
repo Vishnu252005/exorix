@@ -32,8 +32,10 @@ import BaseTrackPage from './pages/BaseTrackPage';
 import Monad from './pages/Monad';
 import Chat from './pages/Chat';
 import { CartProvider } from './context/CartContext';
+import { WishlistProvider } from './context/WishlistContext';
 import { Toaster } from 'react-hot-toast';
 import Checkout from './pages/Checkout';
+import MobileNavbar from './components/MobileNavbar';
 
 // Create a client
 const queryClient = new QueryClient();
@@ -131,6 +133,7 @@ const AppContent = () => {
       <AnimatedRoutes />
       {!isChatPage && !isProfilePage && <Footer />}
       <Chatbot />
+      <MobileNavbar />
     </div>
   );
 };
@@ -150,24 +153,26 @@ function App() {
   };
 
   return (
-    <AuthProvider>
-      <ThemeProvider>
-        <CartProvider>
-          <Toaster position="top-center" />
-          <WagmiProvider config={config}>
-            <QueryClientProvider client={queryClient}>
-              {loading ? (
-                <LoadingScreen finishLoading={finishLoading} />
-              ) : (
-                <Router>
-                  <AppContent />
-                </Router>
-              )}
-            </QueryClientProvider>
-          </WagmiProvider>
-        </CartProvider>
-      </ThemeProvider>
-    </AuthProvider>
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ThemeProvider>
+            <CartProvider>
+              <WishlistProvider>
+                <Toaster position="top-center" />
+                {loading ? (
+                  <LoadingScreen finishLoading={finishLoading} />
+                ) : (
+                  <Router>
+                    <AppContent />
+                  </Router>
+                )}
+              </WishlistProvider>
+            </CartProvider>
+          </ThemeProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
   );
 }
 

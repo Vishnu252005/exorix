@@ -49,7 +49,7 @@ const Navbar = () => {
     { name: 'Products', path: '/products' },
     { name: 'Blog', path: '/blog' },
     { name: 'Esports', path: '/esports' },
-    { name: 'Monad', path: '/monad' },
+    { name: 'NFT', path: '/monad' },
     { name: 'Join Us', path: '/join' },
     { name: 'Contact', path: '/contact' },
   ];

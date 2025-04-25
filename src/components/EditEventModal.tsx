@@ -108,40 +108,17 @@ const EditEventModal: React.FC<EditEventModalProps> = ({ isOpen, onClose, onSubm
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Update the event document with registration fields
-      const eventData = {
+      // Create event data with only the fields we have
+      const updatedEventData = {
         ...formData,
+        id: eventData?.id,
         date: new Date(formData.date),
         capacity: Number(formData.capacity),
         updatedAt: new Date(),
-        image: gameImages[formData.game as keyof typeof gameImages] || gameImages['Other'],
-        registrationStatus: formData.registrationStatus || 'open',
-        registrationDeadline: formData.registrationDeadline || null,
-        maxRegistrationsPerTeam: formData.maxRegistrationsPerTeam || 1,
-        minTeamSize: formData.minTeamSize || 1,
-        maxTeamSize: formData.maxTeamSize || 5,
-        registrationFields: {
-          required: ['playerName', 'email', 'gameId', 'phoneNumber', 'upiTransactionId'],
-          optional: ['teamName', 'discordId']
-        }
+        image: gameImages[formData.game as keyof typeof gameImages] || gameImages['Other']
       };
 
-      // Update the event document
-      await updateDoc(doc(db, 'events', eventData.id), eventData);
-
-      // Update the registrations/_info document
-      await updateDoc(doc(db, 'events', eventData.id, 'registrations', '_info'), {
-        lastUpdated: new Date(),
-        registrationConfig: {
-          requirePayment: !!eventData.registrationFee,
-          paymentAmount: eventData.registrationFee,
-          paymentInstructions: eventData.paymentInstructions,
-          upiId: eventData.upiId,
-          organizerPhone: eventData.organizerPhone
-        }
-      });
-
-      onSubmit(eventData);
+      onSubmit(updatedEventData);
     } catch (error) {
       console.error('Error updating event:', error);
     }
@@ -157,6 +134,8 @@ const EditEventModal: React.FC<EditEventModalProps> = ({ isOpen, onClose, onSubm
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+            title="Close modal"
+            aria-label="Close modal"
           >
             <X className="w-6 h-6" />
           </button>

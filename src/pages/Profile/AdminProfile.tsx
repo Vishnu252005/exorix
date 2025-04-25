@@ -57,6 +57,7 @@ import { toast } from 'react-hot-toast';
 import EditEventModal from '../../components/EditEventModal';
 import { css } from '@emotion/react';
 import styled from '@emotion/styled';
+import EditBlogModal from '../../components/EditBlogModal';
 
 interface AvatarStyle {
   id: string;
@@ -213,6 +214,8 @@ const AdminProfile: React.FC = () => {
   const [showCart, setShowCart] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [selectedBlog, setSelectedBlog] = useState<Blog | null>(null);
+  const [showEditBlogModal, setShowEditBlogModal] = useState(false);
 
   const fetchStats = async () => {
     if (!user) return;
@@ -815,6 +818,48 @@ const AdminProfile: React.FC = () => {
     toast.success(`${product.name} added to cart!`);
   };
 
+  const handleEditBlog = async (blogData: any) => {
+    try {
+      if (!selectedBlog) return;
+      
+      const blogRef = doc(db, 'blogs', selectedBlog.id);
+      await updateDoc(blogRef, {
+        ...blogData,
+        updatedAt: Timestamp.now()
+      });
+
+      // Update local state
+      const updatedBlogs = adminData?.blogs?.map(blog => 
+        blog.id === selectedBlog.id ? { ...blog, ...blogData } : blog
+      ) || [];
+
+      setAdminData(prev => prev ? { ...prev, blogs: updatedBlogs } : null);
+      setSelectedBlog(null);
+      toast.success('Blog updated successfully!');
+    } catch (err) {
+      console.error('Error updating blog:', err);
+      toast.error('Failed to update blog');
+    }
+  };
+
+  const openEditBlogModal = async (blog: any) => {
+    try {
+      // Get full blog details from Firestore
+      const blogDoc = await getDoc(doc(db, 'blogs', blog.id));
+      if (blogDoc.exists()) {
+        const blogData = blogDoc.data();
+        setSelectedBlog({
+          id: blog.id,
+          ...blogData
+        });
+        setShowEditBlogModal(true);
+      }
+    } catch (err: any) {
+      console.error('Error fetching blog details:', err);
+      toast.error('Failed to fetch blog details');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0A0A0B]">
@@ -1274,6 +1319,17 @@ const AdminProfile: React.FC = () => {
                               {blog.comments} comments
                             </span>
                           </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => openEditBlogModal(blog)}
+                            className="p-2 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-600/10 rounded-lg transition-colors"
+                            title="Edit Blog"
+                          >
+                            <Edit3 className="w-5 h-5" />
+                          </motion.button>
                         </div>
                       </div>
                     </motion.div>
@@ -1904,6 +1960,17 @@ const AdminProfile: React.FC = () => {
           product={selectedProduct}
         />
       )}
+
+      {/* Edit Blog Modal */}
+      <EditBlogModal
+        isOpen={showEditBlogModal}
+        onClose={() => {
+          setShowEditBlogModal(false);
+          setSelectedBlog(null);
+        }}
+        onSubmit={handleEditBlog}
+        blogData={selectedBlog}
+      />
     </div>
   );
 };
