@@ -1035,6 +1035,13 @@ const Chat = () => {
                           </span>
                         </div>
                         
+                        {/* WhatsApp-style reply preview */}
+                        {message.isReply && message.replyTo && (
+                          <div className="border-l-4 border-indigo-400 bg-gray-800/60 px-3 py-2 mb-1 rounded-md">
+                            <div className="text-xs font-semibold text-indigo-300">{message.replyTo.username || 'Unknown User'}</div>
+                            <div className="text-xs text-gray-300 truncate">{message.replyTo.text}</div>
+                          </div>
+                        )}
                         <div className={`mt-1 ${message.isAI ? 'text-gray-300 space-y-2' : 'text-gray-300'}`}>
                           {message.isTyping ? (
                             <div>
@@ -1050,12 +1057,20 @@ const Chat = () => {
                             formatMessageText(message.text)
                           )}
                         </div>
+                        {/* Reactions row */}
+                        {message.reactions && Object.keys(message.reactions).length > 0 && (
+                          <div className="flex gap-2 mt-2">
+                            {Object.entries(message.reactions).map(([emoji, userIds]) => (
+                              <span
+                                key={emoji}
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-sm font-medium bg-gray-700/80 text-white border border-gray-600 select-none ${user && userIds.includes(user.uid) ? 'ring-2 ring-indigo-400' : ''}`}
+                              >
+                                {emoji} {userIds.length > 1 ? userIds.length : ''}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      {message.isReply && message.replyTo && (
-                        <div className="text-xs text-gray-400 mb-1">
-                          Replying to {message.replyTo.username || 'Unknown User'}: {message.replyTo.text}
-                        </div>
-                      )}
                     </motion.div>
                   ))}
                   <div ref={messagesEndRef} className="h-0" />
