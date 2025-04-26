@@ -155,22 +155,22 @@ function App() {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <ThemeProvider>
-            <CartProvider>
+    <AuthProvider>
+      <ThemeProvider>
+        <CartProvider>
               <WishlistProvider>
-                <Toaster position="top-center" />
-                {loading ? (
-                  <LoadingScreen finishLoading={finishLoading} />
-                ) : (
-                  <Router>
-                    <AppContent />
-                  </Router>
-                )}
+          <Toaster position="top-center" />
+              {loading ? (
+                <LoadingScreen finishLoading={finishLoading} />
+              ) : (
+                <Router>
+                  <AppContent />
+                </Router>
+              )}
               </WishlistProvider>
-            </CartProvider>
-          </ThemeProvider>
-        </AuthProvider>
+        </CartProvider>
+      </ThemeProvider>
+    </AuthProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );

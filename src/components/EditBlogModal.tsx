@@ -4,14 +4,14 @@ import { X, Save, RefreshCw } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
 
 interface Blog {
-  id: string;
-  title: string;
-  content: string;
-  summary: string;
-  category: string;
-  tags: string[];
-  coverImage: string;
-  status: 'draft' | 'published';
+    id: string;
+    title: string;
+    content: string;
+    summary: string;
+    category: string;
+    tags: string[];
+    coverImage: string;
+    status: 'draft' | 'published';
   seoKeywords?: string[];
   structure?: string[];
 }
@@ -119,7 +119,7 @@ const EditBlogModal: React.FC<EditBlogModalProps> = ({ isOpen, onClose, onSubmit
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          onClick={onClose}
+            onClick={onClose}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -134,20 +134,20 @@ const EditBlogModal: React.FC<EditBlogModalProps> = ({ isOpen, onClose, onSubmit
                 onClick={onClose}
                 className="p-2 hover:bg-gray-800/50 rounded-lg transition-colors"
                 aria-label="Close modal"
-              >
+          >
                 <X className="w-5 h-5 text-gray-400" />
-              </button>
-            </div>
+          </button>
+        </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
               {/* Title */}
               <div className="space-y-2">
                 <label htmlFor="title" className="text-sm text-gray-400">Title</label>
-                <input
-                  type="text"
-                  id="title"
+              <input
+                type="text"
+                id="title"
                   name="title"
-                  value={formData.title}
+                value={formData.title}
                   onChange={handleInputChange}
                   className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white focus:outline-none focus:border-indigo-500"
                   required
@@ -178,66 +178,66 @@ const EditBlogModal: React.FC<EditBlogModalProps> = ({ isOpen, onClose, onSubmit
                   onChange={handleInputChange}
                   rows={10}
                   className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white focus:outline-none focus:border-indigo-500"
-                  required
-                />
-              </div>
+                required
+              />
+            </div>
 
               {/* Category */}
               <div className="space-y-2">
                 <label htmlFor="category" className="text-sm text-gray-400">Category</label>
-                <select
-                  id="category"
+              <select
+                id="category"
                   name="category"
-                  value={formData.category}
+                value={formData.category}
                   onChange={handleInputChange}
                   className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white focus:outline-none focus:border-indigo-500"
-                  required
-                >
-                  <option value="">Select a category</option>
-                  {categories.map((category) => (
-                    <option key={category} value={category}>{category}</option>
-                  ))}
-                </select>
-              </div>
+                required
+              >
+                <option value="">Select a category</option>
+                {categories.map((category) => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+          </div>
 
               {/* Cover Image */}
               <div className="space-y-2">
                 <label htmlFor="coverImage" className="text-sm text-gray-400">Cover Image URL</label>
-                <input
-                  type="url"
-                  id="coverImage"
+            <input
+              type="url"
+              id="coverImage"
                   name="coverImage"
-                  value={formData.coverImage}
+              value={formData.coverImage}
                   onChange={handleInputChange}
                   className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white focus:outline-none focus:border-indigo-500"
-                  required
-                />
-              </div>
+              required
+            />
+          </div>
 
               {/* Tags */}
               <div className="space-y-2">
                 <label htmlFor="tags" className="text-sm text-gray-400">Tags</label>
-                <div className="flex flex-wrap gap-2 mb-2">
+            <div className="flex flex-wrap gap-2 mb-2">
                   {formData.tags?.map((tag, index) => (
-                    <span
+                <span
                       key={index}
                       className="px-3 py-1 bg-indigo-600/20 text-indigo-400 rounded-full text-sm flex items-center"
-                    >
-                      {tag}
-                      <button
-                        type="button"
+                >
+                  {tag}
+                  <button
+                    type="button"
                         onClick={() => removeTag(index)}
                         className="ml-2 hover:text-indigo-300"
                         aria-label={`Remove tag ${tag}`}
-                      >
+                  >
                         <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-                <input
-                  type="text"
-                  value={tagInput}
+                  </button>
+                </span>
+              ))}
+            </div>
+              <input
+                type="text"
+                value={tagInput}
                   onChange={e => setTagInput(e.target.value)}
                   onKeyDown={handleTagKeyDown}
                   placeholder="Press Enter to add tags"
@@ -255,17 +255,17 @@ const EditBlogModal: React.FC<EditBlogModalProps> = ({ isOpen, onClose, onSubmit
                       className="px-3 py-1 bg-purple-600/20 text-purple-400 rounded-full text-sm flex items-center"
                     >
                       {keyword}
-                      <button
-                        type="button"
+              <button
+                type="button"
                         onClick={() => removeSeoKeyword(index)}
                         className="ml-2 hover:text-purple-300"
                         aria-label={`Remove SEO keyword ${keyword}`}
-                      >
+              >
                         <X className="w-3 h-3" />
-                      </button>
+              </button>
                     </span>
                   ))}
-                </div>
+            </div>
                 <input
                   type="text"
                   value={seoInput}
@@ -274,35 +274,35 @@ const EditBlogModal: React.FC<EditBlogModalProps> = ({ isOpen, onClose, onSubmit
                   placeholder="Press Enter to add SEO keywords"
                   className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white focus:outline-none focus:border-indigo-500"
                 />
-              </div>
+          </div>
 
               {/* Status */}
               <div className="space-y-2">
                 <label htmlFor="status" className="text-sm text-gray-400">Status</label>
-                <select
-                  id="status"
+            <select
+              id="status"
                   name="status"
-                  value={formData.status}
+              value={formData.status}
                   onChange={handleInputChange}
                   className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white focus:outline-none focus:border-indigo-500"
-                  required
-                >
-                  <option value="draft">Draft</option>
-                  <option value="published">Published</option>
-                </select>
-              </div>
+              required
+            >
+              <option value="draft">Draft</option>
+              <option value="published">Published</option>
+            </select>
+          </div>
 
               {/* Submit Button */}
               <div className="flex justify-end space-x-4">
-                <button
-                  type="button"
-                  onClick={onClose}
+            <button
+              type="button"
+              onClick={onClose}
                   className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
                   disabled={isLoading}
                   className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center space-x-2"
                 >
@@ -317,9 +317,9 @@ const EditBlogModal: React.FC<EditBlogModalProps> = ({ isOpen, onClose, onSubmit
                       <span>Save Changes</span>
                     </>
                   )}
-                </button>
-              </div>
-            </form>
+            </button>
+          </div>
+        </form>
           </motion.div>
         </motion.div>
       )}

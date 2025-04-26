@@ -3,7 +3,22 @@ import * as React from 'react';
 import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db, createEvent, createJob } from '../../firebase';
-import { doc, getDoc, updateDoc, collection, getDocs, query, where, addDoc, deleteDoc, setDoc, type DocumentData, Timestamp } from 'firebase/firestore';
+import {
+  doc,
+  getDoc,
+  updateDoc,
+  collection,
+  getDocs,
+  query,
+  where,
+  addDoc,
+  deleteDoc,
+  setDoc,
+  orderBy,
+  limit,
+  type DocumentData,
+  Timestamp
+} from 'firebase/firestore';
 import {
   User,
   Mail,
@@ -43,7 +58,8 @@ import {
   X,
   Minus,
   ShoppingBag,
-  ExternalLink
+  ExternalLink,
+  AlertCircle
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import ProfileAvatar from '../../components/ProfileAvatar';
@@ -216,6 +232,42 @@ const AdminProfile: React.FC = () => {
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [selectedBlog, setSelectedBlog] = useState<Blog | null>(null);
   const [showEditBlogModal, setShowEditBlogModal] = useState(false);
+  const [showChatSection, setShowChatSection] = useState(false);
+  const [channels, setChannels] = useState<{ id: string; name: string; messageCount: number; allowUserMessages?: boolean; description?: string; type?: string; icon?: string; archived?: boolean; members?: string[]; lastMessage?: any }[]>([]);
+  const [isLoadingChannels, setIsLoadingChannels] = useState(false);
+  const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
+  const [isDeletingMessages, setIsDeletingMessages] = useState(false);
+  const [showCreateChannelModal, setShowCreateChannelModal] = useState(false);
+  const [newChannelName, setNewChannelName] = useState('');
+  const [newChannelId, setNewChannelId] = useState('');
+  const [isCreatingChannel, setIsCreatingChannel] = useState(false);
+  // Add state for editing channel
+  const [editChannelModal, setEditChannelModal] = useState<{ open: boolean; id: string; name: string; allowUserMessages?: boolean; description?: string; type?: string; icon?: string; archived?: boolean; members?: string[] }>({ open: false, id: '', name: '' });
+  const [isEditingChannel, setIsEditingChannel] = useState(false);
+  // Add state for permission toggle
+  const [newChannelAllowUserMessages, setNewChannelAllowUserMessages] = useState(true);
+  const [editChannelAllowUserMessages, setEditChannelAllowUserMessages] = useState(true);
+  // Add new state for advanced channel features
+  const [newChannelDescription, setNewChannelDescription] = useState('');
+  const [newChannelType, setNewChannelType] = useState<'public' | 'private'>('public');
+  const [newChannelIcon, setNewChannelIcon] = useState('');
+  const [newChannelArchived, setNewChannelArchived] = useState(false);
+  const [newChannelMembers, setNewChannelMembers] = useState<string[]>([]);
+  const [editChannelDescription, setEditChannelDescription] = useState('');
+  const [editChannelType, setEditChannelType] = useState<'public' | 'private'>('public');
+  const [editChannelIcon, setEditChannelIcon] = useState('');
+  const [editChannelArchived, setEditChannelArchived] = useState(false);
+  const [editChannelMembers, setEditChannelMembers] = useState<string[]>([]);
+  // Add state for selected channel messages
+  const [channelMessages, setChannelMessages] = useState<any[]>([]);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [viewingChannelId, setViewingChannelId] = useState<string | null>(null);
+  // Add new state for message interactions
+  const [selectedMessage, setSelectedMessage] = useState<any | null>(null);
+  const [showMessageMenu, setShowMessageMenu] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+  const [replyToMessage, setReplyToMessage] = useState<any | null>(null);
+  const [replyText, setReplyText] = useState('');
 
   const fetchStats = async () => {
     if (!user) return;
@@ -860,6 +912,439 @@ const AdminProfile: React.FC = () => {
     }
   };
 
+  // Add fetchChannels function
+  const fetchChannels = async () => {
+    setIsLoadingChannels(true);
+    try {
+      const channelsRef = collection(db, 'channels');
+      const channelsSnapshot = await getDocs(channelsRef);
+      const channelsData = [];
+      for (const channelDoc of channelsSnapshot.docs) {
+        const messagesRef = collection(db, 'channels', channelDoc.id, 'messages');
+        const messagesQuery = query(messagesRef, orderBy('timestamp', 'desc'), limit(1));
+        const messagesSnapshot = await getDocs(messagesQuery);
+        const messageCount = messagesSnapshot.size;
+        const data = channelDoc.data();
+        channelsData.push({
+          id: channelDoc.id,
+          name: data.name,
+          allowUserMessages: data.allowUserMessages !== false, // default true
+          description: data.description || '',
+          type: data.type || 'public',
+          icon: data.icon || '',
+          archived: !!data.archived,
+          members: data.members || [],
+          messageCount: messageCount,
+          lastMessage: messagesSnapshot.docs[0]?.data() || null,
+        });
+      }
+      setChannels(channelsData);
+    } catch (error) {
+      console.error('Error fetching channels:', error);
+      toast.error('Failed to load channels');
+    } finally {
+      setIsLoadingChannels(false);
+    }
+  };
+
+  // Add clearChannelMessages function
+  const clearChannelMessages = async (channelId: string) => {
+    if (!window.confirm(`Are you sure you want to clear all messages from this channel? This action cannot be undone.`)) {
+      return;
+    }
+
+    setIsDeletingMessages(true);
+    try {
+      const messagesRef = collection(db, 'channels', channelId, 'messages');
+      const messagesSnapshot = await getDocs(messagesRef);
+      
+      const deletePromises = messagesSnapshot.docs.map(doc => 
+        deleteDoc(doc.ref)
+      );
+      
+      await Promise.all(deletePromises);
+      toast.success('Channel messages cleared successfully');
+      fetchChannels(); // Refresh the channel list
+    } catch (error) {
+      console.error('Error clearing messages:', error);
+      toast.error('Failed to clear messages');
+    } finally {
+      setIsDeletingMessages(false);
+      setSelectedChannel(null);
+    }
+  };
+
+  // Add useEffect to fetch channels when section is opened
+  useEffect(() => {
+    if (activeTab === 'chat') {
+      fetchChannels();
+    }
+  }, [activeTab]);
+
+  const handleCreateChannel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newChannelName.trim()) {
+      toast.error('Channel name is required');
+      return;
+    }
+    setIsCreatingChannel(true);
+    try {
+      const channelId = newChannelId.trim() || newChannelName.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
+      const channelDocRef = doc(db, 'channels', channelId);
+      await setDoc(channelDocRef, {
+        name: newChannelName.trim(),
+        description: newChannelDescription.trim(),
+        type: newChannelType,
+        icon: newChannelIcon,
+        archived: newChannelArchived,
+        members: newChannelType === 'private' ? newChannelMembers : [],
+        createdAt: Timestamp.now(),
+        allowUserMessages: newChannelAllowUserMessages,
+      });
+      toast.success('Channel created successfully!');
+      setShowCreateChannelModal(false);
+      setNewChannelName('');
+      setNewChannelId('');
+      setNewChannelAllowUserMessages(true);
+      setNewChannelDescription('');
+      setNewChannelType('public');
+      setNewChannelIcon('');
+      setNewChannelArchived(false);
+      setNewChannelMembers([]);
+      fetchChannels();
+    } catch (error) {
+      console.error('Error creating channel:', error);
+      toast.error('Failed to create channel');
+    } finally {
+      setIsCreatingChannel(false);
+    }
+  };
+
+  const handleDeleteChannel = async (channelId: string) => {
+    if (!window.confirm('Are you sure you want to delete this channel? This action cannot be undone.')) return;
+    setIsDeletingMessages(true);
+    try {
+      await deleteDoc(doc(db, 'channels', channelId));
+      toast.success('Channel deleted successfully!');
+      fetchChannels();
+    } catch (error) {
+      console.error('Error deleting channel:', error);
+      toast.error('Failed to delete channel');
+    } finally {
+      setIsDeletingMessages(false);
+    }
+  };
+
+  const handleEditChannel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editChannelModal.name.trim()) {
+      toast.error('Channel name is required');
+      return;
+    }
+    setIsEditingChannel(true);
+    try {
+      await updateDoc(doc(db, 'channels', editChannelModal.id), {
+        name: editChannelModal.name.trim(),
+        description: editChannelDescription.trim(),
+        type: editChannelType,
+        icon: editChannelIcon,
+        archived: editChannelArchived,
+        members: editChannelType === 'private' ? editChannelMembers : [],
+        allowUserMessages: editChannelAllowUserMessages,
+      });
+      toast.success('Channel updated successfully!');
+      setEditChannelModal({ open: false, id: '', name: '' });
+      setEditChannelAllowUserMessages(true);
+      setEditChannelDescription('');
+      setEditChannelType('public');
+      setEditChannelIcon('');
+      setEditChannelArchived(false);
+      setEditChannelMembers([]);
+      fetchChannels();
+    } catch (error) {
+      console.error('Error updating channel:', error);
+      toast.error('Failed to update channel');
+    } finally {
+      setIsEditingChannel(false);
+    }
+  };
+
+  // Function to fetch messages for a channel
+  const fetchChannelMessages = async (channelId: string) => {
+    setIsLoadingMessages(true);
+    setViewingChannelId(channelId);
+    try {
+      const messagesRef = collection(db, 'channels', channelId, 'messages');
+      const messagesQuery = query(messagesRef, orderBy('timestamp', 'desc'), limit(50));
+      const messagesSnapshot = await getDocs(messagesQuery);
+      setChannelMessages(messagesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      toast.error('Failed to load messages');
+    } finally {
+      setIsLoadingMessages(false);
+    }
+  };
+
+  // Function to delete a message
+  const handleDeleteMessage = async (channelId: string, messageId: string) => {
+    if (!window.confirm('Are you sure you want to delete this message? This action cannot be undone.')) return;
+    try {
+      await deleteDoc(doc(db, 'channels', channelId, 'messages', messageId));
+      toast.success('Message deleted successfully!');
+      fetchChannelMessages(channelId);
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      toast.error('Failed to delete message');
+    }
+  };
+
+  // Add emoji options
+  const EMOJI_OPTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+
+  // Function to handle message click
+  const handleMessageClick = (e: React.MouseEvent, message: any) => {
+    e.preventDefault();
+    setSelectedMessage(message);
+    setMenuPosition({ x: e.clientX, y: e.clientY });
+    setShowMessageMenu(true);
+  };
+
+  // Function to add emoji reaction
+  const handleAddReaction = async (emoji: string) => {
+    if (!selectedMessage || !viewingChannelId) return;
+    
+    try {
+      const messageRef = doc(db, 'channels', viewingChannelId, 'messages', selectedMessage.id);
+      const messageDoc = await getDoc(messageRef);
+      
+      if (messageDoc.exists()) {
+        const currentReactions = messageDoc.data().reactions || {};
+        const currentCount = currentReactions[emoji] || 0;
+        
+        await updateDoc(messageRef, {
+          reactions: {
+            ...currentReactions,
+            [emoji]: currentCount + 1
+          }
+        });
+        
+        toast.success('Reaction added!');
+        fetchChannelMessages(viewingChannelId);
+      }
+    } catch (error) {
+      console.error('Error adding reaction:', error);
+      toast.error('Failed to add reaction');
+    }
+    setShowMessageMenu(false);
+  };
+
+  // Function to handle reply
+  const handleReply = async () => {
+    if (!replyToMessage || !viewingChannelId || !replyText.trim()) return;
+    
+    try {
+      const messagesRef = collection(db, 'channels', viewingChannelId, 'messages');
+      await addDoc(messagesRef, {
+        text: replyText,
+        sender: user?.email,
+        senderName: adminData?.name,
+        timestamp: Timestamp.now(),
+        isReply: true,
+        replyTo: {
+          messageId: replyToMessage.id,
+          sender: replyToMessage.sender,
+          text: replyToMessage.text
+        }
+      });
+      
+      setReplyText('');
+      setReplyToMessage(null);
+      toast.success('Reply sent!');
+      fetchChannelMessages(viewingChannelId);
+    } catch (error) {
+      console.error('Error sending reply:', error);
+      toast.error('Failed to send reply');
+    }
+  };
+
+  // Update the message list UI to include the new features
+  // Replace the existing message list with:
+  <ul className="space-y-4 max-h-96 overflow-y-auto">
+    {channelMessages.map(msg => (
+      <li 
+        key={msg.id} 
+        className="bg-gray-700/50 rounded-lg p-3 relative group cursor-pointer hover:bg-gray-700/70 transition-colors"
+        onDoubleClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const rect = e.currentTarget.getBoundingClientRect();
+          setMenuPosition({ 
+            x: e.clientX,
+            y: e.clientY
+          });
+          setSelectedMessage(msg);
+          setShowMessageMenu(true);
+        }}
+      >
+        {msg.isReply && (
+          <div className="text-xs text-gray-400 mb-1">
+            Replying to {msg.replyTo?.senderName || msg.replyTo?.sender || 'Unknown User'}: {msg.replyTo?.text}
+          </div>
+        )}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm text-white font-medium">{msg.senderName || msg.sender || 'Unknown User'}</div>
+            <div className="text-gray-300 text-sm">{msg.text || msg.content || '[No Content]'}</div>
+            <div className="text-xs text-gray-400">{msg.timestamp?.toDate ? msg.timestamp.toDate().toLocaleString() : ''}</div>
+            {msg.reactions && Object.entries(msg.reactions).length > 0 && (
+              <div className="flex gap-2 mt-2">
+                {Object.entries(msg.reactions).map(([emoji, count]) => (
+                  <span key={emoji} className="text-sm">
+                    {emoji} {count}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteMessage(viewingChannelId, msg.id);
+              }}
+              className="text-red-400 hover:text-red-300 ml-4"
+              title="Delete Message"
+              aria-label="Delete message"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </li>
+    ))}
+  </ul>
+
+  {/* Add the message interaction menu */}
+  {showMessageMenu && (
+    <div 
+      className="fixed bg-gray-800 rounded-lg shadow-lg p-2 z-50 message-menu"
+      style={{ 
+        top: `${menuPosition.y}px`,
+        left: `${menuPosition.x}px`,
+        transform: 'translate(-50%, -50%)',
+        minWidth: '200px'
+      }}
+    >
+      <div className="flex flex-wrap gap-2 mb-2">
+        {EMOJI_OPTIONS.map(emoji => (
+          <button
+            key={emoji}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleAddReaction(emoji);
+            }}
+            className="text-xl hover:scale-110 transition-transform p-1"
+            title={`React with ${emoji}`}
+            aria-label={`React with ${emoji}`}
+          >
+            {emoji}
+          </button>
+        ))}
+      </div>
+      <div className="space-y-1">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setReplyToMessage(selectedMessage);
+            setShowMessageMenu(false);
+          }}
+          className="w-full text-left px-2 py-1 hover:bg-gray-700 rounded flex items-center gap-2"
+          title="Reply to message"
+          aria-label="Reply to message"
+        >
+          <MessageSquare className="w-4 h-4" />
+          Reply
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDeleteMessage(viewingChannelId, selectedMessage.id);
+          }}
+          className="w-full text-left px-2 py-1 hover:bg-gray-700 rounded text-red-400 flex items-center gap-2"
+          title="Delete message"
+          aria-label="Delete message"
+        >
+          <Trash2 className="w-4 h-4" />
+          Delete
+        </button>
+      </div>
+    </div>
+  )}
+
+  {/* Add reply input when a message is selected for reply */}
+  {replyToMessage && (
+    <div className="mt-4 bg-gray-800 rounded-lg p-4">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm text-gray-400">
+          Replying to {replyToMessage.senderName || replyToMessage.sender || 'Unknown User'}
+        </span>
+        <button
+          onClick={() => setReplyToMessage(null)}
+          className="text-gray-400 hover:text-white"
+          title="Cancel reply"
+          aria-label="Cancel reply"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={replyText}
+          onChange={(e) => setReplyText(e.target.value)}
+          placeholder="Type your reply..."
+          className="flex-1 bg-gray-700 text-white rounded-lg px-4 py-2"
+          aria-label="Reply text input"
+        />
+        <button
+          onClick={handleReply}
+          disabled={!replyText.trim()}
+          className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+          title="Send reply"
+          aria-label="Send reply"
+        >
+          Reply
+        </button>
+      </div>
+    </div>
+  )}
+
+  // Add click outside handler to close menu
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const menuElement = document.querySelector('.message-menu');
+      if (showMessageMenu && menuElement && !menuElement.contains(e.target as Node)) {
+        setShowMessageMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMessageMenu]);
+
+  // Add a style to prevent body scrolling when menu is open
+  useEffect(() => {
+    if (showMessageMenu) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
+    }
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, [showMessageMenu]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0A0A0B]">
@@ -906,44 +1391,6 @@ const AdminProfile: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0A0A0B] text-white flex pt-24">
-      {/* Header/Navigation */}
-      <div className="fixed top-0 left-0 right-0 bg-gray-900/50 backdrop-blur-sm border-b border-gray-700/50 z-50">
-        <div className="container mx-auto px-6">
-          <div className="flex items-center justify-between h-24">
-            {/* Left side - Navigation Links */}
-            <nav className="flex items-center space-x-8">
-              <a href="/" className="text-white hover:text-indigo-400 transition-colors">Home</a>
-              <a href="/about" className="text-white hover:text-indigo-400 transition-colors">About</a>
-              <a href="/services" className="text-white hover:text-indigo-400 transition-colors">Services</a>
-              <a href="/portfolio" className="text-white hover:text-indigo-400 transition-colors">Portfolio</a>
-              <a href="/products" className="text-indigo-400">Products</a>
-            </nav>
-
-            {/* Right side - Cart and Profile */}
-            <div className="flex items-center space-x-6">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setShowCart(true)}
-                className="relative p-2 text-white hover:text-indigo-400 transition-colors"
-                title="View Cart"
-              >
-                <ShoppingCart className="w-6 h-6" />
-                {cart.length > 0 && (
-                  <div className="absolute -top-2 -right-2 bg-indigo-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
-                    {cart.reduce((acc, item) => acc + item.quantity, 0)}
-                  </div>
-                )}
-              </motion.button>
-              <button className="flex items-center space-x-2 text-white hover:text-indigo-400 transition-colors">
-                <User className="w-6 h-6" />
-                <span>Profile</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Sidebar */}
       <div className="fixed left-0 top-24 bottom-0 w-64 bg-gray-800/30 backdrop-blur-sm border-r border-gray-700/50 p-6 overflow-y-auto">
         <div className="flex items-center space-x-4 mb-8">
@@ -1064,6 +1511,18 @@ const AdminProfile: React.FC = () => {
             <ShoppingBag className="w-5 h-5" />
             <span>Orders</span>
           </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => handleTabChange('chat')}
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+              activeTab === 'chat' ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700/50'
+            }`}
+          >
+            <MessageSquare className="w-5 h-5" />
+            <span>Chat Management</span>
+          </motion.button>
         </nav>
 
         <div className="mt-auto pt-6 border-t border-gray-700/50">
@@ -1091,6 +1550,7 @@ const AdminProfile: React.FC = () => {
             {activeTab === 'nft-rewards' && 'NFT Rewards'}
             {activeTab === 'products' && 'Products'}
             {activeTab === 'orders' && 'Orders'}
+            {activeTab === 'chat' && 'Chat Management'}
           </h1>
           <div className="flex items-center space-x-4">
             <div className="relative">
@@ -1840,6 +2300,358 @@ const AdminProfile: React.FC = () => {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Chat Management View */}
+        {activeTab === 'chat' && (
+          <div className="space-y-6">
+            <div className="bg-gray-800 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-medium">Channel Messages</h3>
+                <div className="flex items-center space-x-2 text-sm text-gray-400">
+                  <AlertCircle className="w-4 h-4" />
+                  <span>Clear messages from any channel</span>
+                </div>
+              </div>
+              <div className="mb-4 flex justify-end">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowCreateChannelModal(true)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span>Create Channel</span>
+                </motion.button>
+              </div>
+              {isLoadingChannels ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {channels.map((channel) => (
+                    <div
+                      key={channel.id}
+                      className="bg-gray-700/50 rounded-lg p-4 hover:bg-gray-700 transition-colors"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium">{channel.name}</h4>
+                        <span className="text-sm text-gray-400">
+                          {channel.messageCount} messages
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-400">ID: {channel.id}</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setEditChannelModal({ open: true, ...channel })}
+                            className="flex items-center space-x-1 px-2 py-1 text-sm text-indigo-400 hover:text-indigo-300 hover:bg-indigo-600/10 rounded transition-colors"
+                            title="Edit Channel"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteChannel(channel.id)}
+                            disabled={isDeletingMessages}
+                            className="flex items-center space-x-1 px-2 py-1 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Delete Channel"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => clearChannelMessages(channel.id)}
+                            disabled={isDeletingMessages}
+                            className="flex items-center space-x-1 px-2 py-1 text-sm text-yellow-400 hover:text-yellow-300 hover:bg-yellow-600/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title={`Clear all messages from ${channel.name} channel`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            <span>Clear Messages</span>
+                          </button>
+                          <button onClick={() => fetchChannelMessages(channel.id)} className="text-sm text-blue-400 hover:underline ml-2">View Messages</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* Create Channel Modal */}
+            {showCreateChannelModal && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-gray-900 rounded-xl p-6 max-w-md w-full mx-4 space-y-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold text-white">Create New Channel</h3>
+                    <button
+                      onClick={() => setShowCreateChannelModal(false)}
+                      className="text-gray-400 hover:text-white"
+                      title="Close"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+                  <form onSubmit={handleCreateChannel} className="space-y-4">
+                    <div className="space-y-2">
+                      <label htmlFor="channelName" className="text-sm text-gray-400">Channel Name<span className="text-red-500">*</span></label>
+                      <input
+                        id="channelName"
+                        type="text"
+                        value={newChannelName}
+                        onChange={e => setNewChannelName(e.target.value)}
+                        className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+                        required
+                        placeholder="e.g. General, Announcements"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="channelId" className="text-sm text-gray-400">Channel ID/Slug <span className="text-gray-500">(optional)</span></label>
+                      <input
+                        id="channelId"
+                        type="text"
+                        value={newChannelId}
+                        onChange={e => setNewChannelId(e.target.value)}
+                        className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+                        placeholder="e.g. general, announcements"
+                      />
+                      <p className="text-xs text-gray-500">If left blank, will be generated from the channel name.</p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input type="checkbox" id="allowUserMessages" checked={newChannelAllowUserMessages} onChange={e => setNewChannelAllowUserMessages(e.target.checked)} />
+                      <label htmlFor="allowUserMessages" className="text-sm text-gray-400">Allow users to send messages</label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <label htmlFor="channelDescription" className="text-sm text-gray-400">Description</label>
+                      <textarea
+                        id="channelDescription"
+                        value={newChannelDescription}
+                        onChange={e => setNewChannelDescription(e.target.value)}
+                        className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+                        placeholder="Enter a description for the channel"
+                      />
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <label htmlFor="channelType" className="text-sm text-gray-400">Type</label>
+                      <select
+                        id="channelType"
+                        value={newChannelType}
+                        onChange={e => setNewChannelType(e.target.value as 'public' | 'private')}
+                        className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+                      >
+                        <option value="public">Public</option>
+                        <option value="private">Private</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <label htmlFor="channelIcon" className="text-sm text-gray-400">Icon URL</label>
+                      <input
+                        id="channelIcon"
+                        type="url"
+                        value={newChannelIcon}
+                        onChange={e => setNewChannelIcon(e.target.value)}
+                        className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+                        placeholder="Enter an icon URL"
+                      />
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input type="checkbox" id="channelArchived" checked={newChannelArchived} onChange={e => setNewChannelArchived(e.target.checked)} />
+                      <label htmlFor="channelArchived" className="text-sm text-gray-400">Archived</label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <label htmlFor="channelMembers" className="text-sm text-gray-400">Members</label>
+                      <input
+                        id="channelMembers"
+                        type="text"
+                        value={newChannelMembers.join(', ')}
+                        onChange={e => setNewChannelMembers(e.target.value.split(',').map(str => str.trim()))}
+                        className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+                        placeholder="Enter member emails, separated by commas"
+                      />
+                    </div>
+                    <div className="flex justify-end space-x-4">
+                      <button
+                        type="button"
+                        onClick={() => setShowCreateChannelModal(false)}
+                        className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isCreatingChannel}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                      >
+                        {isCreatingChannel ? 'Creating...' : 'Create Channel'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+            {/* Edit Channel Modal */}
+            {editChannelModal.open && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-gray-900 rounded-xl p-6 max-w-md w-full mx-4 space-y-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold text-white">Edit Channel</h3>
+                    <button
+                      onClick={() => setEditChannelModal({ open: false, id: '', name: '' })}
+                      className="text-gray-400 hover:text-white"
+                      title="Close"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+                  <form onSubmit={handleEditChannel} className="space-y-4">
+                    <div className="space-y-2">
+                      <label htmlFor="editChannelName" className="text-sm text-gray-400">Channel Name<span className="text-red-500">*</span></label>
+                      <input
+                        id="editChannelName"
+                        type="text"
+                        value={editChannelModal.name}
+                        onChange={e => setEditChannelModal(modal => ({ ...modal, name: e.target.value }))}
+                        className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+                        required
+                      />
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input type="checkbox" id="editAllowUserMessages" checked={editChannelAllowUserMessages} onChange={e => setEditChannelAllowUserMessages(e.target.checked)} />
+                      <label htmlFor="editAllowUserMessages" className="text-sm text-gray-400">Allow users to send messages</label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <label htmlFor="editChannelDescription" className="text-sm text-gray-400">Description</label>
+                      <textarea
+                        id="editChannelDescription"
+                        value={editChannelDescription}
+                        onChange={e => setEditChannelDescription(e.target.value)}
+                        className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+                        placeholder="Enter a description for the channel"
+                      />
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <label htmlFor="editChannelType" className="text-sm text-gray-400">Type</label>
+                      <select
+                        id="editChannelType"
+                        value={editChannelType}
+                        onChange={e => setEditChannelType(e.target.value as 'public' | 'private')}
+                        className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+                      >
+                        <option value="public">Public</option>
+                        <option value="private">Private</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <label htmlFor="editChannelIcon" className="text-sm text-gray-400">Icon URL</label>
+                      <input
+                        id="editChannelIcon"
+                        type="url"
+                        value={editChannelIcon}
+                        onChange={e => setEditChannelIcon(e.target.value)}
+                        className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+                        placeholder="Enter an icon URL"
+                      />
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input type="checkbox" id="editChannelArchived" checked={editChannelArchived} onChange={e => setEditChannelArchived(e.target.checked)} />
+                      <label htmlFor="editChannelArchived" className="text-sm text-gray-400">Archived</label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <label htmlFor="editChannelMembers" className="text-sm text-gray-400">Members</label>
+                      <input
+                        id="editChannelMembers"
+                        type="text"
+                        value={editChannelMembers.join(', ')}
+                        onChange={e => setEditChannelMembers(e.target.value.split(',').map(str => str.trim()))}
+                        className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+                        placeholder="Enter member emails, separated by commas"
+                      />
+                    </div>
+                    <div className="flex justify-end space-x-4">
+                      <button
+                        type="button"
+                        onClick={() => setEditChannelModal({ open: false, id: '', name: '' })}
+                        className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isEditingChannel}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                      >
+                        {isEditingChannel ? 'Saving...' : 'Save Changes'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+            {viewingChannelId && (
+              <div className="bg-gray-800 rounded-lg p-4 mt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-medium">Messages in {viewingChannelId}</h4>
+                  <button onClick={() => { setViewingChannelId(null); setChannelMessages([]); }} className="text-gray-400 hover:text-white">Close</button>
+                </div>
+                {isLoadingMessages ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader className="w-6 h-6 animate-spin text-indigo-400" />
+                  </div>
+                ) : channelMessages.length === 0 ? (
+                  <div className="text-gray-400 text-center py-8">No messages found.</div>
+                ) : (
+                  <ul className="space-y-4 max-h-96 overflow-y-auto">
+                    {channelMessages.map(msg => (
+                      <li 
+                        key={msg.id} 
+                        className="bg-gray-700/50 rounded-lg p-3 relative group cursor-pointer hover:bg-gray-700/70 transition-colors"
+                        onDoubleClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setMenuPosition({ 
+                            x: e.clientX,
+                            y: e.clientY
+                          });
+                          setSelectedMessage(msg);
+                          setShowMessageMenu(true);
+                        }}
+                      >
+                        {msg.isReply && (
+                          <div className="text-xs text-gray-400 mb-1">
+                            Replying to {msg.replyTo?.senderName || msg.replyTo?.sender || 'Unknown User'}: {msg.replyTo?.text}
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm text-white font-medium">{msg.senderName || msg.sender || 'Unknown User'}</div>
+                            <div className="text-gray-300 text-sm">{msg.text || msg.content || '[No Content]'}</div>
+                            <div className="text-xs text-gray-400">{msg.timestamp?.toDate ? msg.timestamp.toDate().toLocaleString() : ''}</div>
+                            {msg.reactions && Object.entries(msg.reactions).length > 0 && (
+                              <div className="flex gap-2 mt-2">
+                                {Object.entries(msg.reactions).map(([emoji, count]) => (
+                                  <span key={emoji} className="text-sm">
+                                    {emoji} {count}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button 
+                              onClick={() => handleDeleteMessage(viewingChannelId, msg.id)}
+                              className="text-red-400 hover:text-red-300 ml-4"
+                              title="Delete Message"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
           </div>

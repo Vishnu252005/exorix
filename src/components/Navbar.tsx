@@ -346,10 +346,10 @@ const Navbar = () => {
             {/* Logo with glow effect */}
             <Link to="/" className="flex items-center space-x-2 group relative">
               <motion.div
-                whileHover={{ scale: 1.05 }}
+                  whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className="relative"
-              >
+                >
                 <motion.div
                   variants={glowVariants}
                   initial="initial"
@@ -358,34 +358,34 @@ const Navbar = () => {
                 />
                 <img src={ExorixLogo} alt="Exorix" className="relative h-10 w-auto" />
               </motion.div>
-            </Link>
+              </Link>
 
             {/* Desktop Navigation with hover effects and animations */}
             <div className="hidden md:flex items-center space-x-1">
-              {navItems.map((item, index) => (
+                {navItems.map((item, index) => (
                 <motion.div
                   key={item.path}
                   custom={index}
                   variants={menuItemVariants}
                 >
                   <Link
-                    to={item.path}
+                      to={item.path}
                     className={`relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
-                      location.pathname === item.path
+                    location.pathname === item.path
                         ? 'text-white bg-indigo-600/10'
                         : 'text-gray-300 hover:text-white hover:bg-gray-800/50'
-                    }`}
-                  >
+                  }`}
+                      >
                     <span className="relative z-10">{item.name}</span>
-                    {location.pathname === item.path && (
-                      <motion.div
-                        layoutId="activeNavLink"
+                  {location.pathname === item.path && (
+                    <motion.div
+                      layoutId="activeNavLink"
                         className="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 rounded-lg"
-                        initial={false}
+                      initial={false}
                         transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                      />
-                    )}
-                  </Link>
+                    />
+                  )}
+                    </Link>
                 </motion.div>
               ))}
             </div>
@@ -393,8 +393,8 @@ const Navbar = () => {
             {/* Social Media Icons with hover effects */}
             <div className="hidden md:flex items-center space-x-2">
               {/* Chat Icon */}
-              <Link
-                to="/chat"
+                <Link
+                  to="/chat"
                 className="group relative p-2 rounded-lg hover:bg-gray-800/50 transition-all duration-300"
               >
                 <motion.div
@@ -410,13 +410,13 @@ const Navbar = () => {
                   />
                   <MessageSquare className="w-5 h-5 text-gray-300 group-hover:text-white transition-colors" />
                 </motion.div>
-              </Link>
+                </Link>
 
               {/* Cart Icon with enhanced animation */}
-              <motion.button
+                <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                onClick={() => setShowCart(!showCart)}
+                  onClick={() => setShowCart(!showCart)}
                 className="group relative p-2 rounded-lg hover:bg-gray-800/50 transition-all duration-300"
               >
                 <motion.div
@@ -426,24 +426,24 @@ const Navbar = () => {
                   className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg blur opacity-0 group-hover:opacity-30 transition duration-300"
                 />
                 <ShoppingCart className="w-5 h-5 text-gray-300 group-hover:text-white transition-colors" />
-                {totalItems > 0 && (
+                  {totalItems > 0 && (
                   <motion.span
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center text-xs font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full"
                   >
-                    {totalItems}
+                      {totalItems}
                   </motion.span>
-                )}
-              </motion.button>
+                  )}
+                </motion.button>
 
               {/* Auth Section */}
-              {user ? (
-                <div className="relative">
+                {user ? (
+                  <div className="relative">
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => setShowProfileMenu(!showProfileMenu)}
+                      onClick={() => setShowProfileMenu(!showProfileMenu)}
                     className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-gradient-to-r from-gray-800/50 to-gray-700/50 hover:from-gray-700/50 hover:to-gray-600/50 transition-all duration-300 group"
                   >
                     <User className="h-5 w-5 text-indigo-400 group-hover:text-indigo-300 transition-colors" />
@@ -456,9 +456,9 @@ const Navbar = () => {
                     </motion.div>
                   </motion.button>
 
-                  {renderProfileMenu()}
-                </div>
-              ) : (
+                    {renderProfileMenu()}
+                  </div>
+                ) : (
                 <div className="flex items-center space-x-3">
                   <Link
                     to="/signin"
@@ -471,14 +471,14 @@ const Navbar = () => {
                     whileTap={{ scale: 0.95 }}
                   >
                     <Link
-                      to="/signup"
+                    to="/signup"
                       className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-indigo-600/20"
                     >
-                      Sign Up
+                    Sign Up
                     </Link>
                   </motion.div>
                 </div>
-              )}
+                )}
             </div>
 
             {/* Mobile menu button with animation */}
@@ -493,12 +493,12 @@ const Navbar = () => {
                 <motion.div
                   animate={{ rotate: isOpen ? 90 : 0 }}
                   transition={{ duration: 0.2 }}
-                >
-                  {isOpen ? (
-                    <X className="h-6 w-6 text-gray-300" />
-                  ) : (
-                    <Menu className="h-6 w-6 text-gray-300" />
-                  )}
+              >
+                {isOpen ? (
+                  <X className="h-6 w-6 text-gray-300" />
+                ) : (
+                  <Menu className="h-6 w-6 text-gray-300" />
+                )}
                 </motion.div>
               </motion.button>
             </div>

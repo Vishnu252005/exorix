@@ -1123,7 +1123,7 @@ const UserProfile = () => {
               >
             <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-white">Recent Blogs</h2>
-            </div>
+              </div>
 
                 {/* Blogs List */}
                 {userData.blogs && userData.blogs.length > 0 ? (
@@ -1439,8 +1439,8 @@ const UserProfile = () => {
                 </motion.button>
               </div>
             )}
-          </div>
-        )}
+              </div>
+            )}
 
         {/* Settings View */}
         {activeTab === 'settings' && (
