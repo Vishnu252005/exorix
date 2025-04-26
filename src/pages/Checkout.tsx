@@ -4,20 +4,15 @@ import { useCart } from '../context/CartContext';
 import { ChevronLeft, CreditCard, Truck, Shield, Wallet, CheckCircle2, AlertCircle, Loader2, ExternalLink, Box } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { useAccount, useConnect, useDisconnect, useBalance, useContractWrite, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
+import { useAccount, useConnect, useDisconnect, useBalance, useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther } from 'viem';
 import { placeOrder } from '../firebase';
-import { ethers } from "ethers";
 import { CONTRACT_ADDRESSES } from '../web3Config';
 import { collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
+import { cbWalletConnector } from '../lib/wagmi';
 
-// Add these contract ABIs
-const rewardTokenABI = [
-  "function balanceOf(address account) public view returns (uint256)",
-  "function decimals() public view returns (uint8)"
-] as const;
-
+// Contract ABIs
 const distributorABI = [
   {
     name: "distributeRewards",
@@ -31,13 +26,6 @@ const distributorABI = [
   }
 ] as const;
 
-const NFT_CONTRACT_ADDRESS = "0xc4FEbC06ff857d8D34E11dF7f6d85B96ee90711A";
-const NFT_CONTRACT_ABI = [
-  "function mint() public",
-  "function balanceOf(address owner) view returns (uint256)",
-  "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)"
-];
-
 const Checkout = () => {
   const { cart, totalPrice, clearCart } = useCart();
   const navigate = useNavigate();
@@ -45,47 +33,110 @@ const Checkout = () => {
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'crypto'>('card');
   const [error, setError] = useState<string>('');
   const [status, setStatus] = useState<string>('');
-  const [currentTxHash, setCurrentTxHash] = useState<string>('');
-  const [transactionDetails, setTransactionDetails] = useState<string>('');
-  const [mintingStatus, setMintingStatus] = useState<string>('');
   const [transactionStatus, setTransactionStatus] = useState<'idle' | 'processing' | 'submitted' | 'confirmed' | 'failed'>('idle');
-  const [minting, setMinting] = useState<boolean>(false);
 
   // Web3 hooks
   const { address, isConnected } = useAccount();
-  const { connect, connectors } = useConnect();
+  const { connect } = useConnect();
   const { disconnect } = useDisconnect();
   const { data: balance } = useBalance({
     address,
   });
 
-  // Contract write function
-  const { writeContract: makePayment, data: paymentTxHash } = useContractWrite({
-    address: '0xYourContractAddress',
-    abi: [
-      {
-        name: 'makePayment',
-        type: 'function',
-        stateMutability: 'payable',
-        inputs: [],
-        outputs: [],
-      },
-    ],
-    functionName: 'makePayment',
+  // Smart wallet transaction
+  const { sendTransaction, data: txHash } = useSendTransaction();
+  const { isLoading: isTxLoading, isSuccess: isTxSuccess, data: txReceipt } = useWaitForTransactionReceipt({
+    hash: txHash,
   });
 
-  // Transaction receipt hook
-  const { isLoading: isPaymentLoading, isSuccess: isPaymentSuccess } = useWaitForTransactionReceipt({
-    hash: paymentTxHash,
-  });
+  const handleCryptoPayment = async () => {
+    if (!address) {
+      setError('Please connect your wallet first');
+      return;
+    }
 
-  // Add contract write hook
-  const { writeContract: distributeReward, data: claimTxHashData, error: claimErrorData } = useWriteContract();
+    try {
+      setError('');
+      setStatus('Initiating transaction...');
+      setTransactionStatus('processing');
+      
+      const totalAmount = calculateTotal();
+      const amountInEther = parseEther(totalAmount.toString());
 
-  // Add transaction receipt hook
-  const { isLoading: isClaimLoading, isSuccess: isClaimSuccess, data: claimReceiptData } = useWaitForTransactionReceipt({
-    hash: claimTxHashData,
-  });
+      await sendTransaction({
+        to: "0xFc76726aE77373BD6B000531a132391c820009C2" as `0x${string}`,
+        value: amountInEther,
+      });
+
+      setStatus('Please confirm the transaction in your wallet...');
+    } catch (err) {
+      console.error('Error in handleCryptoPayment:', err);
+      setError(`Failed to process payment: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setStatus('');
+      setTransactionStatus('failed');
+      toast.error('Payment failed');
+    }
+  };
+
+  // Update effect to handle transaction status
+  useEffect(() => {
+    const handleTransactionStatus = async () => {
+      if (txHash) {
+        setStatus('Transaction submitted to blockchain');
+        setTransactionStatus('submitted');
+      }
+
+      if (isTxLoading) {
+        setStatus('Waiting for blockchain confirmation...');
+      }
+
+      if (txReceipt) {
+        const success = txReceipt.status === 'success';
+        if (success) {
+          setTransactionStatus('confirmed');
+          setStatus('Payment successful! 🎉');
+          
+          // Check if order already exists
+          const ordersRef = collection(db, 'orders');
+          const q = query(ordersRef, where('transactionHash', '==', txHash));
+          const querySnapshot = await getDocs(q);
+          
+          if (querySnapshot.empty) {
+            const orderData = {
+              items: cart.map(item => ({
+                id: item.id,
+                name: item.name,
+                price: item.price,
+                quantity: item.quantity,
+                image: item.image
+              })),
+              totalAmount: calculateTotal(),
+              paymentMethod: 'crypto' as const,
+              status: 'completed',
+              transactionHash: txHash,
+              createdAt: serverTimestamp()
+            };
+            
+            try {
+              await placeOrder(orderData);
+              toast.success('Payment successful!');
+              clearCart();
+              navigate('/profile');
+            } catch (err) {
+              console.error('Error creating order:', err);
+              toast.error('Error creating order');
+            }
+          }
+        } else {
+          setTransactionStatus('failed');
+          setError('Transaction failed');
+          toast.error('Transaction failed');
+        }
+      }
+    };
+
+    handleTransactionStatus();
+  }, [txHash, isTxLoading, txReceipt]);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -111,119 +162,6 @@ const Checkout = () => {
   const calculateTotal = () => {
     return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
-
-  const handleCryptoPayment = async () => {
-    if (!address) {
-      setError('Please connect your wallet first');
-      return;
-    }
-
-    try {
-      setError('');
-      setStatus('Initiating transaction...');
-      setMinting(true);
-      console.log('Starting payment...');
-      
-      const totalAmount = calculateTotal();
-      const amountInTokens = BigInt(Math.floor(totalAmount)) * BigInt(10 ** 18); // Convert to token amount with 18 decimals
-
-      await distributeReward({
-        address: CONTRACT_ADDRESSES.distributor as `0x${string}`,
-        abi: distributorABI,
-        functionName: 'distributeRewards',
-        args: [address, amountInTokens]
-      });
-
-      // Don't show success until transaction is confirmed
-      setTransactionStatus('processing');
-      setStatus('Please confirm the transaction in MetaMask...');
-    } catch (err) {
-      console.error('Error in handleCryptoPayment:', err);
-      setError(`Failed to process payment: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      setStatus('');
-      setTransactionStatus('failed');
-      setMintingStatus('Payment failed');
-      toast.error('Payment failed');
-    } finally {
-      setMinting(false);
-    }
-  };
-
-  // Update effect to handle transaction status
-  useEffect(() => {
-    const handleTransactionStatus = async () => {
-      if (claimTxHashData) {
-        console.log('Claim transaction submitted:', claimTxHashData);
-        setStatus('Transaction submitted to blockchain');
-        setTransactionStatus('submitted');
-      }
-
-      if (isClaimLoading) {
-        console.log('Waiting for claim confirmation...');
-        setStatus('Waiting for blockchain confirmation...');
-      }
-
-      if (claimReceiptData) {
-        console.log('Claim receipt received:', claimReceiptData);
-        const success = claimReceiptData.status === 'success';
-        if (success) {
-          setTransactionStatus('confirmed');
-          setStatus('Payment successful! 🎉');
-          
-          // Check if order already exists
-          const ordersRef = collection(db, 'orders');
-          const q = query(ordersRef, where('transactionHash', '==', claimTxHashData));
-          const querySnapshot = await getDocs(q);
-          
-          // Only create order if it doesn't exist
-          if (querySnapshot.empty) {
-            // Update order status
-            const orderData = {
-              items: cart.map(item => ({
-                id: item.id,
-                name: item.name,
-                price: item.price,
-                quantity: item.quantity,
-                image: item.image
-              })),
-              totalAmount: calculateTotal(),
-              paymentMethod: 'crypto',
-              status: 'completed',
-              transactionHash: claimTxHashData,
-              nftMinted: true,
-              createdAt: serverTimestamp()
-            };
-            
-            try {
-              await placeOrder(orderData);
-              toast.success('Payment successful!');
-              
-              // Clear cart and redirect after 2 seconds
-              clearCart();
-              setTimeout(() => {
-                navigate('/products');
-              }, 2000);
-            } catch (err) {
-              console.error('Error placing order:', err);
-              toast.error('Error updating order status');
-            }
-          }
-        } else {
-          setTransactionStatus('failed');
-          setStatus('Transaction failed');
-          toast.error('Payment failed');
-        }
-      }
-
-      if (claimErrorData) {
-        console.error('Claim error:', claimErrorData);
-        setError(`Transaction failed: ${claimErrorData.message}`);
-        setTransactionStatus('failed');
-      }
-    };
-
-    handleTransactionStatus();
-  }, [claimTxHashData, isClaimLoading, claimReceiptData, claimErrorData, cart, clearCart, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -293,11 +231,11 @@ const Checkout = () => {
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => connect({ connector: connectors[0] })}
+          onClick={() => connect({ connector: cbWalletConnector })}
           className="w-full py-4 px-6 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl text-white font-semibold text-lg hover:shadow-lg hover:shadow-indigo-500/25 transition-all duration-300 flex items-center justify-center space-x-2"
         >
           <Wallet className="w-5 h-5" />
-          <span>Connect Wallet</span>
+          <span>Connect Smart Wallet</span>
         </motion.button>
       ) : (
         <div className="space-y-6">
@@ -306,7 +244,7 @@ const Checkout = () => {
               <div className="flex items-center justify-between">
                 <span className="text-gray-400">Wallet Address</span>
                 <span className="text-white font-mono text-sm">
-                  {address && truncateAddress(address)}
+                  {address && `${address.slice(0, 6)}...${address.slice(-4)}`}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -328,7 +266,7 @@ const Checkout = () => {
 
           <div className="border-t border-gray-700 pt-6">
             <div className="flex items-center justify-between mb-6">
-              <span className="text-gray-400">Registration Fee</span>
+              <span className="text-gray-400">Total Amount</span>
               <span className="text-xl font-bold text-white">
                 ${calculateTotal().toFixed(2)}
               </span>
@@ -337,10 +275,10 @@ const Checkout = () => {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleCryptoPayment}
-              disabled={!isConnected || minting}
+              disabled={!isConnected || isTxLoading}
               className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
             >
-              {minting ? (
+              {isTxLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
                   <span>Processing Payment...</span>
@@ -348,7 +286,7 @@ const Checkout = () => {
               ) : (
                 <>
                   <CreditCard className="w-5 h-5" />
-                  <span>Pay Registration Fee (${calculateTotal().toFixed(2)})</span>
+                  <span>Pay ${calculateTotal().toFixed(2)}</span>
                 </>
               )}
             </motion.button>
@@ -365,18 +303,6 @@ const Checkout = () => {
                 <CheckCircle2 className="w-4 h-4 text-green-400" />
                 <p className="text-gray-300">Payment successful! 🎉</p>
               </div>
-
-              {currentTxHash && (
-                <a
-                  href={`https://sepolia.basescan.org/tx/${currentTxHash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center space-x-2 text-blue-400 hover:text-blue-300 transition-colors text-sm"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  <span>View on Base Sepolia Explorer</span>
-                </a>
-              )}
             </motion.div>
           )}
         </div>

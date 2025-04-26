@@ -1,18 +1,25 @@
-import { http, createConfig } from 'wagmi';
-import { mainnet, sepolia } from 'wagmi/chains';
-import { injected } from 'wagmi/connectors';
+import { http, createConfig } from "wagmi";
+import { baseSepolia } from "wagmi/chains";
+import { coinbaseWallet } from "wagmi/connectors";
 
-// Configure chains
-const chains = [mainnet, sepolia];
+export const cbWalletConnector = coinbaseWallet({
+  appName: "Smart Wallet Demo",
+  preference: "smartWalletOnly",
+});
 
-// Create wagmi config
 export const config = createConfig({
-  chains: chains,
+  chains: [baseSepolia],
+  // turn off injected provider discovery
+  multiInjectedProviderDiscovery: false,
+  connectors: [cbWalletConnector],
+  ssr: true,
   transports: {
-    [mainnet.id]: http(),
-    [sepolia.id]: http(),
+    [baseSepolia.id]: http(),
   },
-  connectors: [
-    injected(),
-  ],
-}); 
+});
+
+declare module "wagmi" {
+  interface Register {
+    config: typeof config;
+  }
+}

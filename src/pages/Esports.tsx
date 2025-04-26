@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Users, GamepadIcon, MessageSquare, X, DollarSign, CreditCard, Calendar, MapPin, ArrowRight, RefreshCw, Trash2, Cpu, Plus, Eye, Loader2, Gift, AlertCircle, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { Trophy, Users, GamepadIcon, MessageSquare, X, DollarSign, CreditCard, Calendar, MapPin, ArrowRight, RefreshCw, Trash2, Cpu, Plus, Eye, Loader2, Gift, AlertCircle, ExternalLink, CheckCircle2, Wallet } from 'lucide-react';
 import { collection, getDocs, doc, updateDoc, arrayUnion, addDoc, increment, setDoc, getDoc, onSnapshot, writeBatch, deleteDoc, serverTimestamp, runTransaction } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
-import { useAccount, useConnect, useDisconnect, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useConnect, useDisconnect, useWriteContract, useWaitForTransactionReceipt, useBalance, useSendTransaction } from 'wagmi';
 import { CONTRACT_ADDRESSES } from '../web3Config';
+import { parseEther } from 'viem';
+import { cbWalletConnector } from '../lib/wagmi';
 
 interface TransactionReceipt {
   blockNumber: bigint;
@@ -18,7 +20,6 @@ interface RegistrationModalProps {
   isOpen: boolean;
   onClose: () => void;
   event: any;
-  onSubmit: (formData: any) => Promise<void>;
   onClaimRewards: () => Promise<void>;
   isClaiming: boolean;
   isClaimLoading: boolean;
@@ -34,7 +35,6 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
   isOpen,
   onClose,
   event,
-  onSubmit,
   onClaimRewards,
   isClaiming,
   isClaimLoading,
@@ -52,11 +52,128 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
     teamName: '',
     phoneNumber: '',
     discordId: '',
-    upiTransactionId: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [status, setStatus] = useState('');
+  const [transactionStatus, setTransactionStatus] = useState<'idle' | 'processing' | 'submitted' | 'confirmed' | 'failed'>('idle');
+
+  // Web3 hooks
+  const { address, isConnected } = useAccount();
+  const { connect } = useConnect();
+  const { disconnect } = useDisconnect();
+  const { data: balance } = useBalance({
+    address,
+  });
+
+  // Auth context
+  const { user } = useAuth() as unknown as AuthContextType;
+
+  // Smart wallet transaction
+  const { sendTransaction, data: txHash } = useSendTransaction();
+  const { isLoading: isTxLoading, isSuccess: isTxSuccess, data: txReceipt } = useWaitForTransactionReceipt({
+    hash: txHash,
+  });
+
+  const handlePayment = async () => {
+    if (!address) {
+      setError('Please connect your wallet first');
+      return;
+    }
+
+    if (!user) {
+      setError('Please log in to register');
+      return;
+    }
+
+    try {
+      setError('');
+      setStatus('Initiating transaction...');
+      setTransactionStatus('processing');
+
+      await sendTransaction({
+        to: "0xFc76726aE77373BD6B000531a132391c820009C2" as `0x${string}`,
+        value: parseEther("0.0001"), // Fixed fee of 0.0001 BASE
+      });
+
+      setStatus('Please confirm the transaction in your wallet...');
+    } catch (err) {
+      console.error('Error in payment:', err);
+      setError(`Failed to process payment: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setStatus('');
+      setTransactionStatus('failed');
+      toast.error('Payment failed');
+    }
+  };
+
+  // Update effect to handle transaction status
+  useEffect(() => {
+    const handleTransactionStatus = async () => {
+      if (txHash) {
+        setStatus('Transaction submitted to blockchain');
+        setTransactionStatus('submitted');
+      }
+
+      if (isTxLoading) {
+        setStatus('Waiting for blockchain confirmation...');
+      }
+
+      if (txReceipt) {
+        const success = txReceipt.status === 'success';
+        if (success) {
+          setTransactionStatus('confirmed');
+          setStatus('Payment successful! 🎉');
+          
+          try {
+            if (!event || !user?.uid) {
+              throw new Error('Missing event or user data');
+            }
+
+            // Create registration document with payment details
+            await addDoc(collection(db, "events", event.id, "registrations"), {
+              userId: user.uid,
+              email: formData.email,
+              playerName: formData.playerName,
+              gameId: formData.gameId,
+              teamName: formData.teamName || null,
+              phoneNumber: formData.phoneNumber,
+              discordId: formData.discordId || null,
+              transactionHash: txHash,
+              paymentStatus: 'completed',
+              status: 'confirmed',
+              timestamp: serverTimestamp()
+            });
+
+            // Update user profile with registration
+            const userRef = doc(db, "users", user.uid);
+            await updateDoc(userRef, {
+              registeredEvents: arrayUnion({
+                eventId: event.id,
+                registeredAt: new Date().toISOString(),
+                eventName: event.title,
+                eventDate: event.date
+              })
+            });
+
+            toast.success('Successfully registered for the event!');
+            setTimeout(() => {
+              onClose();
+            }, 2000);
+          } catch (err) {
+            console.error('Error completing registration:', err);
+            toast.error('Error completing registration');
+          }
+        } else {
+          setTransactionStatus('failed');
+          setError('Transaction failed');
+          toast.error('Transaction failed');
+        }
+      }
+    };
+
+    handleTransactionStatus();
+  }, [txHash, isTxLoading, txReceipt, event, user, formData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,18 +181,15 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
     setError('');
     setSuccess(false);
 
-    try {
-      await onSubmit(formData);
-      setSuccess(true);
-      setTimeout(() => {
-        onClose();
-        window.location.href = '/profile';
-      }, 2000);
-    } catch (err: any) {
-      setError(err.message || 'Failed to register for the event. Please try again.');
-    } finally {
+    // Validate form data
+    if (!formData.playerName || !formData.email || !formData.gameId || !formData.phoneNumber) {
+      setError('Please fill in all required fields');
       setLoading(false);
+      return;
     }
+
+    // Proceed to payment section
+    setLoading(false);
   };
 
   if (!isOpen) return null;
@@ -231,46 +345,83 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
               {/* Payment section above register button */}
               <div className="border-t border-gray-700/50 pt-6">
                 <h3 className="text-lg font-semibold text-gray-200 mb-4">Payment Details</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-gray-400">Registration Fee</span>
+                  <span className="text-xl font-bold text-white">0.0001 BASE</span>
+                </div>
                 
-                {/* Payment button */}
-                <button
-                  onClick={onClaimRewards}
-                  disabled={isClaiming || isClaimLoading || !walletConnected}
-                  className={`w-full px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-500/25 transition-all duration-300 ${
-                    (isClaiming || isClaimLoading || !walletConnected) ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
-                >
-                  {!walletConnected ? (
-                    <div className="flex items-center justify-center">
-                      <AlertCircle className="w-5 h-5 mr-2" />
-                      <span>Connect Wallet to Pay</span>
+                {!isConnected ? (
+                  <motion.button
+                    type="button"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => connect({ connector: cbWalletConnector })}
+                    className="w-full py-4 px-6 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl text-white font-semibold text-lg hover:shadow-lg hover:shadow-indigo-500/25 transition-all duration-300 flex items-center justify-center space-x-2"
+                  >
+                    <Wallet className="w-5 h-5" />
+                    <span>Connect Smart Wallet</span>
+                  </motion.button>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="bg-gray-800/50 rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-gray-400">Wallet Address</span>
+                        <span className="text-white font-mono text-sm">
+                          {address && `${address.slice(0, 6)}...${address.slice(-4)}`}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-400">Balance</span>
+                        <span className="text-white">
+                          {balance?.formatted} {balance?.symbol}
+                        </span>
+                      </div>
                     </div>
-                  ) : (isClaiming || isClaimLoading) ? (
-                    <div className="flex items-center justify-center">
-                      <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                      <span>Processing Payment...</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center">
-                      <CreditCard className="w-5 h-5 mr-2" />
-                      <span>Pay Registration Fee</span>
-                    </div>
-                  )}
-                </button>
+
+                    <motion.button
+                      type="button"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handlePayment}
+                      disabled={isTxLoading || !isConnected}
+                      className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                    >
+                      {isTxLoading ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <span>Processing Payment...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="w-5 h-5" />
+                          <span>Pay 0.0001 BASE</span>
+                        </>
+                      )}
+                    </motion.button>
+
+                    <button
+                      type="button"
+                      onClick={() => disconnect()}
+                      className="w-full py-3 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition-colors"
+                    >
+                      Disconnect Wallet
+                    </button>
+                  </div>
+                )}
 
                 {/* Status messages */}
-                {(claimStatus || claimError) && (
+                {(status || claimStatus) && (
                   <div className="mt-4 p-4 rounded-xl bg-gray-800/50 border border-gray-700/50 space-y-3">
-                    {claimStatus && (
+                    {status && (
                       <div className="flex items-center space-x-2">
-                        {isClaimLoading ? (
+                        {isTxLoading ? (
                           <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
-                        ) : isClaimSuccess ? (
+                        ) : isTxSuccess ? (
                           <CheckCircle2 className="w-4 h-4 text-green-400" />
                         ) : (
                           <AlertCircle className="w-4 h-4 text-yellow-400" />
                         )}
-                        <p className="text-gray-300">{claimStatus}</p>
+                        <p className="text-gray-300">{status}</p>
                       </div>
                     )}
 
@@ -299,9 +450,9 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
               {/* Registration button at the bottom */}
               <button
                 type="submit"
-                disabled={loading || !claimReceipt || claimReceipt.status !== 'success'}
+                disabled={loading || !txReceipt || txReceipt.status !== 'success'}
                 className={`w-full px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 ${
-                  (loading || !claimReceipt || claimReceipt.status !== 'success') ? 'opacity-50 cursor-not-allowed' : ''
+                  (loading || !txReceipt || txReceipt.status !== 'success') ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
               >
                 {loading ? (
@@ -552,8 +703,7 @@ const Esports = () => {
   const [selectedEventTeams, setSelectedEventTeams] = useState<TeamRegistration[]>([]);
   const [matchPairs, setMatchPairs] = useState<MatchPair[]>([]);
   const [isMatchmaking, setIsMatchmaking] = useState(false);
-  const auth = useAuth() as unknown as AuthContextType;
-  const { user, userData } = auth;
+  const { user, userData } = useAuth() as unknown as AuthContextType;
   const [selectedMatch, setSelectedMatch] = useState<MatchPair | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isClaiming, setIsClaiming] = useState(false);
@@ -563,6 +713,14 @@ const Esports = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const { address: walletAddress } = useAccount();
   const [claimReceipt, setClaimReceipt] = useState<TransactionReceipt | null>(null);
+  const [formData, setFormData] = useState({
+    playerName: '',
+    email: '',
+    gameId: '',
+    teamName: '',
+    phoneNumber: '',
+    discordId: '',
+  });
 
   // Add contract write hooks
   const { writeContract: distributeReward, data: claimTxHashData, error: claimErrorData } = useWriteContract();
@@ -681,83 +839,6 @@ const Esports = () => {
     }
     setSelectedEvent(event);
     setShowRegistrationModal(true);
-  };
-
-  const handleRegistrationSubmit = async (event: Event) => {
-    try {
-      if (!user) {
-        toast.error("Please log in to register for events");
-        return;
-      }
-
-      const userData = await getUserData();
-      const email = userData?.email || user.email;
-
-      if (!email) {
-        toast.error("Unable to retrieve user email");
-        return;
-      }
-
-      try {
-        // First attempt: Try to create registration document directly
-        await addDoc(collection(db, "events", event.id, "registrations"), {
-          userId: user.uid,
-          email: email,
-          timestamp: serverTimestamp(),
-        });
-      } catch (error) {
-        // If permission error, try alternative registration approach
-        if (error instanceof Error && error.message.includes("permission-denied")) {
-          const registrationTx = await event.contract.methods.register().send({
-            from: userData?.walletAddress,
-          });
-
-          if (registrationTx.status !== "success") {
-            toast.error("Registration transaction failed");
-            return;
-          }
-        } else {
-          throw error;
-        }
-      }
-
-      // Update event registration count
-      const eventRef = doc(db, "events", event.id);
-      await runTransaction(db, async (transaction) => {
-        const eventDoc = await transaction.get(eventRef);
-        if (!eventDoc.exists()) {
-          throw new Error("Event does not exist!");
-        }
-
-        const currentRegistrations = eventDoc.data().registrations || 0;
-        transaction.update(eventRef, {
-          registrations: currentRegistrations + 1,
-        });
-
-        // Update _info document
-        const infoRef = doc(db, "events", event.id, "_info", "data");
-        transaction.set(infoRef, {
-          lastUpdated: serverTimestamp(),
-          registrationCount: currentRegistrations + 1,
-        }, { merge: true });
-      });
-
-      // Update user profile
-      const userRef = doc(db, "users", user.uid);
-          await updateDoc(userRef, {
-        registeredEvents: arrayUnion({
-          eventId: event.id,
-          registeredAt: serverTimestamp(),
-          eventName: event.name,
-          eventDate: event.date,
-        }),
-      });
-
-      toast.success("Successfully registered for the event!");
-    } catch (error) {
-      console.error("Registration error:", error);
-      toast.error("Failed to register for the event");
-    }
   };
 
   // Function to analyze teams using GROQ AI
@@ -1179,7 +1260,7 @@ const Esports = () => {
                           {/* Team 2 */}
                           <div className="text-center">
                             <h3 className="font-medium text-white mb-1">
-                              {match.team2?.teamName || match.team2?.playerName || 'Waiting...'}
+                              {match.team2?.teamName || match.team2?.playerName || 'Waiting for opponent'}
                             </h3>
                             <p className="text-sm text-indigo-400">Team 2</p>
                           </div>
@@ -1251,9 +1332,11 @@ const Esports = () => {
         {selectedEvent && (
         <RegistrationModal
             isOpen={!!selectedEvent}
-            onClose={() => setSelectedEvent(null)}
+            onClose={() => {
+              setSelectedEvent(null);
+              setShowRegistrationModal(false);
+            }}
           event={selectedEvent}
-          onSubmit={handleRegistrationSubmit}
           onClaimRewards={handleClaimRewards}
           isClaiming={isClaiming}
           isClaimLoading={isClaimLoading}
