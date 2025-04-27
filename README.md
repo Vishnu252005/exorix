@@ -173,7 +173,7 @@ By leveraging cutting-edge technologies like Groq AI, Base blockchain, and Monad
 
 ![Admin Profile](screenshots/adminprofile.jpeg)
 
-- **Live Demo**: [Exorix Live Demo](https://exorix-demo.vercel.app)
+- **Live Demo**: [Exorix Live Demo](https://exorix.vercel.app)
 - **Demo Video**: [Watch Demo Video](https://www.youtube.com/watch?v=DfUEpx0frP8)
 - **Presentation**: [View Presentation](https://drive.google.com/file/d/1YMGSv7-UjlxK_aJWp6tB3iOTiuB21c89/view?usp=sharing)
 
