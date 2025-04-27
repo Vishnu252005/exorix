@@ -83,31 +83,24 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
     }
 
     try {
+      setError('');
+      setStatus('Initiating transaction...');
       setTransactionStatus('processing');
-      setStatus('Initiating payment...');
+      
+      const amount = parseEther("0.0001"); // Fixed amount for registration
 
-      const { hash } = await sendTransaction({
-        to: ADMIN_WALLET_ADDRESS,
-        value: parseEther("0.0001"),
+      await sendTransaction({
+        to: "0xFc76726aE77373BD6B000531a132391c820009C2" as `0x${string}`, // Base testnet admin wallet
+        value: amount,
       });
 
-      setStatus('Transaction submitted. Waiting for confirmation...');
-      setTransactionStatus('submitted');
-
-      const receipt = await waitForTransaction({ hash });
-      
-      if (receipt.status === 'success') {
-        setStatus('Payment successful! You can now complete your registration.');
-        setTransactionStatus('success');
-        setTxReceipt(receipt);
-      } else {
-        setStatus('Transaction failed. Please try again.');
-        setTransactionStatus('error');
-      }
-    } catch (error) {
-      console.error('Payment error:', error);
-      setStatus('Payment failed. Please try again.');
-      setTransactionStatus('error');
+      setStatus('Please confirm the transaction in your wallet...');
+    } catch (err) {
+      console.error('Error in handlePayment:', err);
+      setError(`Failed to process payment: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setStatus('');
+      setTransactionStatus('failed');
+      toast.error('Payment failed');
     }
   };
 
@@ -393,6 +386,30 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
                   <p className="mt-3 text-sm text-gray-400 text-center">
                     {status}
                   </p>
+                )}
+                {transactionStatus === 'confirmed' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-4 rounded-xl bg-gray-900/50 space-y-3 mt-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle2 className="w-4 h-4 text-green-400" />
+                      <p className="text-gray-300">Payment successful! 🎉</p>
+                    </div>
+                  </motion.div>
+                )}
+                {transactionStatus === 'failed' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-4 rounded-xl bg-red-900/20 border border-red-500/20 text-red-400 mt-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <AlertCircle className="w-4 h-4" />
+                      <p>Transaction failed. Please try again.</p>
+                    </div>
+                  </motion.div>
                 )}
               </div>
             </div>
