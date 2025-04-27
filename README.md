@@ -10,6 +10,8 @@
 
 ## 📌 Problem Statement
 
+![Exorix Homepage](screenshots/homepage.jpeg)
+
 **Problem Statement 1 – Weave AI magic with Groq**
 - Implement AI-powered gaming assistance and real-time strategies
 - Enable multi-language support and translations
@@ -129,6 +131,8 @@ By leveraging cutting-edge technologies like Groq AI, Base blockchain, and Monad
   - Voice chat and speech-to-text capabilities
   - Interactive gaming tips and recommendations
 
+![Esports Page](screenshots/esportspage.jpeg)
+
 - 🏆 **Tournament Management**
   - Professional tournament hosting and management
   - Custom tournament brackets
@@ -141,11 +145,15 @@ By leveraging cutting-edge technologies like Groq AI, Base blockchain, and Monad
   - Secure checkout with Base integration
   - Real-time inventory management
 
+![Products Page](screenshots/products.jpeg)
+
 - 📝 **Gaming Blog Platform**
   - AI-powered content generation
   - Multi-language support
   - Featured articles and trending posts
   - Interactive community engagement
+
+![Blog Page](screenshots/blogpage.jpeg)
 
 - 📺 **Live Streaming Hub**
   - Seamless Twitch and YouTube integration
@@ -165,6 +173,8 @@ By leveraging cutting-edge technologies like Groq AI, Base blockchain, and Monad
   - Match scheduling and tracking
   - Professional tournament organization
 
+![NFT Marketplace](screenshots/nft.jpeg)
+
 - 🛍️ **Product Showcase**
   - High-end gaming peripherals
   - Detailed product specifications
@@ -175,9 +185,10 @@ By leveraging cutting-edge technologies like Groq AI, Base blockchain, and Monad
 
 ## 📽️ Demo & Deliverables
 
+![Admin Profile](screenshots/adminprofile.jpeg)
+
 - **Live Demo**: [Exorix Live Demo](https://exorix-demo.vercel.app)
 - **Demo Video**: [Watch Demo Video](https://www.youtube.com/watch?v=DfUEpx0frP8)
-- **Documentation**: [Read Documentation](https://docs.exorix.xyz)
 - **Presentation**: [View Presentation](https://drive.google.com/file/d/1YMGSv7-UjlxK_aJWp6tB3iOTiuB21c89/view?usp=sharing)
 
 ---
