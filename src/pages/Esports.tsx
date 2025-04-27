@@ -316,29 +316,6 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
                 />
               </div>
 
-              {/* UPI Transaction ID Field */}
-              {event.registrationFee && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    UPI Transaction ID *
-                  </label>
-                  <div className="relative">
-                    <CreditCard className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      required
-                      value={formData.upiTransactionId}
-                      onChange={(e) => setFormData({ ...formData, upiTransactionId: e.target.value })}
-                      className="w-full pl-12 pr-4 py-3 bg-gray-800/50 border border-gray-700/50 text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder:text-gray-500"
-                      placeholder="Enter your UPI transaction ID"
-                    />
-                  </div>
-                  <p className="text-sm text-gray-400 mt-2">
-                    Please enter the transaction ID after making the payment
-                  </p>
-                </div>
-              )}
-
               {/* Payment Details Section */}
               <div className="mt-6 p-4 bg-gray-800/30 rounded-xl border border-indigo-500/20">
                 <h3 className="text-lg font-semibold text-gray-200 mb-3 flex items-center">
