@@ -10,25 +10,9 @@
 
 ## 📌 Problem Statement
 
-![Exorix Homepage](screenshots/homepage.jpeg)
-
 **Problem Statement 1 – Weave AI magic with Groq**
-- Implement AI-powered gaming assistance and real-time strategies
-- Enable multi-language support and translations
-- Provide tournament predictions and analysis
-- Generate gaming content and guides
-
 **Problem Statement 2 – Unleash Blockchain with Monad**
-- Create NFT-based reward system for tournaments
-- Implement smart contract-based prize distribution
-- Enable digital collectibles marketplace
-- Provide secure blockchain transactions
-
 **Problem Statement 4 – Craft the future for Onchain Consumer Experience with base**
-- Implement secure smart wallet integration
-- Enable seamless transactions in gaming marketplace
-- Provide Web3 authentication and wallet management
-- Create on-chain rewards system
 
 ---
 
@@ -219,14 +203,6 @@ npm install
 
 # Start development server
 npm run dev
-```
-
-### Environment Setup:
-Create a `.env` file in the root directory with:
-```env
-REACT_APP_GROQ_API_KEY=your_groq_api_key
-REACT_APP_FIREBASE_API_KEY=your_firebase_api_key
-REACT_APP_MONAD_RPC_URL=https://testnet-rpc.monad.xyz
 ```
 
 ### Login Credentials:
