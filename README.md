@@ -1,45 +1,99 @@
-# 🚀 Exorix - The Future of Esports & Gaming
+![github-submission-banner](https://github.com/user-attachments/assets/a1493b84-e4e2-456e-a791-ce35ee2bcf2f)
+
+# 🚀 Exorix
 
 > An AI-powered esports platform revolutionizing the gaming experience with advanced features and seamless integration.
 
 ![Exorix Homepage](https://github.com/user-attachments/assets/aeb91d74-4bfa-4773-9ebf-676e629ff3aa)
 
-<div align="center">
-  <a href="#-features">Features</a> •
-  <a href="#-tech-stack">Tech Stack</a> •
-  <a href="#-getting-started">Getting Started</a> •
-  <a href="#-demo">Demo</a> •
-  <a href="#-future-scope">Future Scope</a> •
-  <a href="#-team">Team</a>
-</div>
+---
+
+## 📌 Problem Statement
+
+**Problem Statement 1 – Weave AI magic with Groq**
+- Implement AI-powered gaming assistance and real-time strategies
+- Enable multi-language support and translations
+- Provide tournament predictions and analysis
+- Generate gaming content and guides
+
+**Problem Statement 2 – Unleash Blockchain with Monad**
+- Create NFT-based reward system for tournaments
+- Implement smart contract-based prize distribution
+- Enable digital collectibles marketplace
+- Provide secure blockchain transactions
+
+**Problem Statement 4 – Craft the future for Onchain Consumer Experience with base**
+- Implement secure smart wallet integration
+- Enable seamless transactions in gaming marketplace
+- Provide Web3 authentication and wallet management
+- Create on-chain rewards system
 
 ---
 
-## 🌟 Overview
+## 🎯 Objective
 
-Exorix is a revolutionary gaming platform that combines cutting-edge AI technology with competitive gaming to create an unparalleled experience for gamers worldwide. Our platform serves as a comprehensive ecosystem for gamers, tournament organizers, content creators, and esports teams.
+Exorix revolutionizes the esports and gaming landscape by creating an all-in-one platform that seamlessly integrates competitive gaming, community engagement, and digital commerce. Our platform serves as a comprehensive ecosystem for:
 
-### 🎯 Key Highlights
+- **Gamers & Enthusiasts**: Offering AI-powered gaming assistance, real-time community chat, and access to premium gaming products
+- **Tournament Organizers**: Providing advanced tournament management tools, live streaming capabilities, and NFT-based prize distribution
+- **Content Creators**: Enabling AI-assisted blog creation, multi-language support, and seamless content sharing
+- **Esports Teams**: Facilitating team management, match coordination, and performance tracking
+- **Gaming Communities**: Fostering engagement through interactive features, voice chat, and real-time updates
 
-- 🤖 **AI-Powered Gaming Assistant**: Get real-time strategies and personalized recommendations
-- 🏆 **NFT Prize System**: Win exclusive NFTs in tournaments
-- 💰 **Smart Wallet Integration**: Secure and seamless transactions
-- 🌐 **Multi-Language Support**: Break language barriers in gaming
-- 🎮 **Advanced Tournament Management**: Fair and exciting tournament experiences
-- 🛍️ **Premium Gaming Marketplace**: Curated selection of gaming products
+By leveraging cutting-edge technologies like Groq AI, Base blockchain, and Monad NFTs, we're creating a next-generation gaming platform that:
+- Democratizes access to professional gaming tools and insights
+- Rewards competitive achievements with tangible digital assets
+- Breaks down language barriers in global gaming communities
+- Provides a secure and seamless marketplace for gaming products
+- Creates an immersive and interactive gaming experience
+
+---
+
+## 🧠 Team & Approach
+
+### Team Name:  
+`Exorix Team`
+
+### Team Members:  
+- Vishnu (GitHub: [Vishnu252005](https://github.com/Vishnu252005))
+
+### Your Approach:  
+- **Innovative Integration**: We've created a revolutionary gaming platform that seamlessly combines AI technology with competitive gaming, offering an unparalleled experience for both casual and professional gamers.
+
+- **Key Features & Solutions**:
+  - 🎮 **AI-Powered Gaming Assistant**: Our Groq-powered chatbot, using the llama-3.3-70b-versatile model, provides real-time gaming strategies, match predictions, and personalized recommendations, making it feel like having a professional coach by your side.
+  - 🏆 **NFT Prize System**: Leveraging Monad blockchain, we've created a unique reward system where tournament winners receive exclusive NFTs as prizes, with IPFS-based metadata storage and smart contract-based distribution.
+  - 💰 **Smart Wallet Integration**: Using Base technology with @coinbase/onchainkit, we've implemented secure and seamless transactions with smart wallet preference, making it easy for users to manage their gaming assets and rewards.
+  - 🌐 **Multi-Language Support**: Our Groq-powered translation system breaks language barriers, allowing gamers worldwide to participate and communicate effectively, with support for multiple languages and dialects.
+  - 🎯 **Advanced Tournament Management**: From bracket generation to match predictions, our platform uses Groq AI to create fair and exciting tournament experiences, with Monad-based prize distribution.
+  - 🛍️ **Premium Gaming Marketplace**: A curated selection of high-end gaming products with secure checkout powered by Base smart wallet integration, ensuring safe and seamless transactions.
+  - 📝 **Interactive Gaming Blog**: Groq-powered content generation for gaming news, reviews, and guides, with multi-language support and real-time updates.
+  - 📺 **Live Streaming Integration**: Seamless integration with Twitch and YouTube for live tournaments, featuring real-time viewer counts, chat, and interactive elements.
+  - 💬 **Community Chat Platform**: Real-time voice and text chat with game status integration, reactions, and community events, fostering a vibrant gaming community.
+
+- **Breakthrough Innovations**:
+  - First platform to combine AI match predictions with NFT rewards
+  - Seamless integration of blockchain technology for secure transactions
+  - Advanced AI-powered content generation for gaming strategies and guides
+  - Real-time translation support for global gaming community
+  - Smart contract-based reward distribution system
+  - Integrated gaming marketplace with secure payment processing
+  - AI-assisted blog creation with multi-language support
+  - Live streaming platform with interactive features and real-time analytics
+  - Advanced community chat system with voice integration and game status tracking
 
 ---
 
 ## 🛠️ Tech Stack
 
-### Core Technologies
-- **Frontend**: React, TypeScript, TailwindCSS, Framer Motion
-- **Backend**: Firebase, Node.js
-- **Database**: Firestore
-- **APIs**: Various gaming and payment APIs
-- **Hosting**: Vercel
+### Core Technologies Used:
+- Frontend: React, TypeScript, TailwindCSS, Framer Motion
+- Backend: Firebase, Node.js
+- Database: Firestore
+- APIs: Various gaming and payment APIs
+- Hosting: Vercel
 
-### Sponsor Technologies
+### Sponsor Technologies Used:
 - ✅ **Groq:** 
   - AI-powered gaming assistant using llama-3.3-70b-versatile model
   - Real-time gaming strategies and match predictions
@@ -67,92 +121,59 @@ Exorix is a revolutionary gaming platform that combines cutting-edge AI technolo
 
 ---
 
-## 🚀 Getting Started
+## ✨ Key Features
 
-### Prerequisites
-- Node.js (v16 or higher)
-- Firebase account
-- MetaMask or Coinbase Wallet
+- 🎮 **AI-Powered Gaming Assistant**
+  - Real-time gaming strategies and match predictions
+  - Multi-language support with Groq AI
+  - Voice chat and speech-to-text capabilities
+  - Interactive gaming tips and recommendations
 
-### Installation
+- 🏆 **Tournament Management**
+  - Professional tournament hosting and management
+  - Custom tournament brackets
+  - Live streaming integration with Twitch/YouTube
+  - Real-time match scheduling and results tracking
 
-```bash
-# Clone the repository
-git clone https://github.com/Vishnu252005/exorix.git
+- 💰 **Digital Marketplace**
+  - Premium gaming products and accessories
+  - Detailed product specifications and reviews
+  - Secure checkout with Base integration
+  - Real-time inventory management
 
-# Navigate to the project directory
-cd exorix
+- 📝 **Gaming Blog Platform**
+  - AI-powered content generation
+  - Multi-language support
+  - Featured articles and trending posts
+  - Interactive community engagement
 
-# Install dependencies
-npm install
+- 📺 **Live Streaming Hub**
+  - Seamless Twitch and YouTube integration
+  - Real-time viewer counts and chat
+  - Tournament highlights and replays
+  - Professional production quality
 
-# Start the development server
-npm run dev
-```
+- 💬 **Community Features**
+  - Real-time voice and text chat
+  - Game status integration
+  - Community events and tournaments
+  - Interactive reactions and engagement
 
-### Environment Setup
-Create a `.env` file in the root directory with the following variables:
-```env
-REACT_APP_GROQ_API_KEY=your_groq_api_key
-REACT_APP_FIREBASE_API_KEY=your_firebase_api_key
-REACT_APP_MONAD_RPC_URL=https://testnet-rpc.monad.xyz
-```
+- 🎯 **Tournament Features**
+  - Prize pool management
+  - Team registration system
+  - Match scheduling and tracking
+  - Professional tournament organization
 
-### Login Credentials
-- **Admin Access**:
-  ```
-  Email: admin@demo.com
-  Password: test123
-  ```
-- **Demo User Access**:
-  ```
-  Email: user@example.com
-  Password: test123
-  ```
-
----
-
-## 🎮 Features
-
-### 1. AI-Powered Gaming Assistant
-- Real-time gaming strategies and match predictions
-- Multi-language support with advanced translation
-- Voice chat and speech-to-text capabilities
-- Interactive gaming tips and recommendations
-
-### 2. Tournament Management
-- Professional tournament hosting and management
-- Custom tournament brackets
-- Live streaming integration with Twitch/YouTube
-- Real-time match scheduling and results tracking
-
-### 3. Digital Marketplace
-- Premium gaming products and accessories
-- Detailed product specifications and reviews
-- Secure checkout with Base integration
-- Real-time inventory management
-
-### 4. Gaming Blog Platform
-- AI-powered content generation
-- Multi-language support
-- Featured articles and trending posts
-- Interactive community engagement
-
-### 5. Live Streaming Hub
-- Seamless Twitch and YouTube integration
-- Real-time viewer counts and chat
-- Tournament highlights and replays
-- Professional production quality
-
-### 6. Community Features
-- Real-time voice and text chat
-- Game status integration
-- Community events and tournaments
-- Interactive reactions and engagement
+- 🛍️ **Product Showcase**
+  - High-end gaming peripherals
+  - Detailed product specifications
+  - Customer reviews and ratings
+  - Secure payment processing
 
 ---
 
-## 📽️ Demo
+## 📽️ Demo & Deliverables
 
 - **Live Demo**: [Exorix Live Demo](https://exorix-demo.vercel.app)
 - **Demo Video**: [Watch Demo Video](https://youtube.com/demo)
@@ -160,52 +181,113 @@ REACT_APP_MONAD_RPC_URL=https://testnet-rpc.monad.xyz
 
 ---
 
+## ✅ Tasks & Bonus Checklist
+
+- ✅ **All members of the team completed the mandatory task - Followed at least 2 of our social channels and filled the form**
+- ✅ **All members of the team completed Bonus Task 1 - Sharing of Badges and filled the form (2 points)**
+- ✅ **All members of the team completed Bonus Task 2 - Signing up for Sprint.dev and filled the form (3 points)**
+
+---
+
+## 🧪 How to Run the Project
+
+### Requirements:
+- Node.js (v16 or higher)
+- Firebase account
+- MetaMask or Coinbase Wallet
+
+### Local Setup:
+```bash
+# Clone the repo
+git clone https://github.com/Vishnu252005/exorix.git
+
+# Install dependencies
+cd exorix
+npm install
+
+# Start development server
+npm run dev
+```
+
+### Environment Setup:
+Create a `.env` file in the root directory with:
+```env
+REACT_APP_GROQ_API_KEY=your_groq_api_key
+REACT_APP_FIREBASE_API_KEY=your_firebase_api_key
+REACT_APP_MONAD_RPC_URL=https://testnet-rpc.monad.xyz
+```
+
+### Login Credentials:
+
+#### Admin Access:
+```
+Email: admin@demo.com
+Password: test123
+```
+
+#### Demo User Access:
+```
+Email: user@example.com
+Password: test123
+```
+
+*Note: Users can create new accounts for testing purposes.*
+
+---
+
 ## 🧬 Future Scope
 
-### Enhanced Gaming Experience
-- Integration with more gaming platforms
-- Advanced matchmaking algorithms
-- Real-time performance analytics
-- Virtual reality tournament support
+- 🎮 **Enhanced Gaming Experience**
+  - Integration with more gaming platforms and titles
+  - Advanced matchmaking algorithms
+  - Real-time performance analytics
+  - Virtual reality tournament support
 
-### AI & Technology
-- Advanced AI coaching systems
-- Predictive analytics for tournament outcomes
-- Automated content generation
-- Enhanced voice recognition and translation
+- 🤖 **AI & Technology**
+  - Advanced AI coaching systems
+  - Predictive analytics for tournament outcomes
+  - Automated content generation
+  - Enhanced voice recognition and translation
 
-### Monetization & Rewards
-- Expanded NFT marketplace
-- Token-based reward system
-- Subscription-based premium features
-- Sponsorship integration platform
+- 💰 **Monetization & Rewards**
+  - Expanded NFT marketplace
+  - Token-based reward system
+  - Subscription-based premium features
+  - Sponsorship integration platform
 
-### Community & Social
-- Global tournament circuits
-- Team management tools
-- Social media integration
-- Community-driven content creation
+- 🌐 **Community & Social**
+  - Global tournament circuits
+  - Team management tools
+  - Social media integration
+  - Community-driven content creation
+
+- 🛠️ **Technical Improvements**
+  - Mobile application development
+  - Enhanced security features
+  - Improved streaming quality
+  - Cross-platform compatibility
+
+- 🎯 **Tournament Evolution**
+  - Automated tournament scheduling
+  - Advanced bracket generation
+  - Real-time tournament analytics
+  - Professional league integration
+
+- 🛍️ **Marketplace Expansion**
+  - Digital asset trading
+  - Gaming merchandise store
+  - Custom product creation
+  - Enhanced product visualization
+
+- 📱 **Platform Growth**
+  - Mobile app development
+  - Console integration
+  - Cloud gaming support
+  - Cross-platform tournaments
 
 ---
 
-## 👥 Team
-
-### Team Name: Exorix Team
-
-### Team Members:
-- **Vishnu** - Lead Developer
-  - GitHub: [Vishnu252005](https://github.com/Vishnu252005)
-  - Role: Full Stack Development, Blockchain Integration
-
-### Our Approach:
-- **Innovative Integration**: Combining AI technology with competitive gaming
-- **User-Centric Design**: Focus on seamless user experience
-- **Security First**: Implementing robust security measures
-- **Community Driven**: Building features based on user feedback
-
----
-
-## 📎 Resources & Credits
+## 📎 Resources / Credits
 
 - Firebase for backend services
 - React and TypeScript for frontend
@@ -215,35 +297,7 @@ REACT_APP_MONAD_RPC_URL=https://testnet-rpc.monad.xyz
 
 ---
 
-## 🤝 Contributing
+## 🏁 Final Words
 
-We welcome contributions! Please read our [Contributing Guidelines](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🙏 Acknowledgments
-
-Special thanks to:
-- Our mentors and advisors
-- The hackathon organizers
-- The open-source community
-- All our beta testers and users
-
----
-
-<div align="center">
-  <h3>Join the Exorix Community</h3>
-  <p>Follow us on social media for updates and announcements!</p>
-  <p>
-    <a href="https://twitter.com/exorix">Twitter</a> •
-    <a href="https://discord.gg/exorix">Discord</a> •
-    <a href="https://t.me/exorix">Telegram</a>
-  </p>
-</div>
+Our journey in building Exorix has been both challenging and rewarding. We've learned a lot about building scalable applications and integrating various technologies. Special thanks to our mentors and the hackathon organizers for their support and guidance!
 
