@@ -78,32 +78,36 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
 
   const handlePayment = async () => {
     if (!address) {
-      setError('Please connect your wallet first');
-      return;
-    }
-
-    if (!user) {
-      setError('Please log in to register');
+      setStatus('Please connect your wallet first');
       return;
     }
 
     try {
-      setError('');
-      setStatus('Initiating transaction...');
       setTransactionStatus('processing');
+      setStatus('Initiating payment...');
 
-      await sendTransaction({
-        to: "0xFc76726aE77373BD6B000531a132391c820009C2" as `0x${string}`,
-        value: parseEther("0.0001"), // Fixed fee of 0.0001 BASE
+      const { hash } = await sendTransaction({
+        to: ADMIN_WALLET_ADDRESS,
+        value: parseEther("0.0001"),
       });
 
-      setStatus('Please confirm the transaction in your wallet...');
-    } catch (err) {
-      console.error('Error in payment:', err);
-      setError(`Failed to process payment: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      setStatus('');
-      setTransactionStatus('failed');
-      toast.error('Payment failed');
+      setStatus('Transaction submitted. Waiting for confirmation...');
+      setTransactionStatus('submitted');
+
+      const receipt = await waitForTransaction({ hash });
+      
+      if (receipt.status === 'success') {
+        setStatus('Payment successful! You can now complete your registration.');
+        setTransactionStatus('success');
+        setTxReceipt(receipt);
+      } else {
+        setStatus('Transaction failed. Please try again.');
+        setTransactionStatus('error');
+      }
+    } catch (error) {
+      console.error('Payment error:', error);
+      setStatus('Payment failed. Please try again.');
+      setTransactionStatus('error');
     }
   };
 
@@ -237,236 +241,160 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Form fields with enhanced styling */}
             <div className="space-y-6">
-            <div>
+              <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                Player Name *
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.playerName}
-                onChange={(e) => setFormData({ ...formData, playerName: e.target.value })}
+                  Player Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.playerName}
+                  onChange={(e) => setFormData({ ...formData, playerName: e.target.value })}
                   className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700/50 text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder:text-gray-500"
-                placeholder="Your gaming name"
-              />
-            </div>
+                  placeholder="Your gaming name"
+                />
+              </div>
 
-            <div>
+              <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                Email *
-              </label>
-              <input
-                type="email"
-                required
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700/50 text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder:text-gray-500"
-                placeholder="your@email.com"
-              />
-            </div>
+                  placeholder="your@email.com"
+                />
+              </div>
 
-            <div>
+              <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                Game ID *
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.gameId}
-                onChange={(e) => setFormData({ ...formData, gameId: e.target.value })}
+                  Game ID *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.gameId}
+                  onChange={(e) => setFormData({ ...formData, gameId: e.target.value })}
                   className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700/50 text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder:text-gray-500"
-                placeholder="Your in-game ID"
-              />
-            </div>
+                  placeholder="Your in-game ID"
+                />
+              </div>
 
-            <div>
+              <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                Team Name
-              </label>
-              <input
-                type="text"
-                value={formData.teamName}
-                onChange={(e) => setFormData({ ...formData, teamName: e.target.value })}
+                  Team Name
+                </label>
+                <input
+                  type="text"
+                  value={formData.teamName}
+                  onChange={(e) => setFormData({ ...formData, teamName: e.target.value })}
                   className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700/50 text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder:text-gray-500"
-                placeholder="Your team name (if applicable)"
-              />
-            </div>
+                  placeholder="Your team name (if applicable)"
+                />
+              </div>
 
-            <div>
+              <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                Phone Number *
-              </label>
-              <input
-                type="tel"
-                required
-                value={formData.phoneNumber}
-                onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                  Phone Number *
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={formData.phoneNumber}
+                  onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
                   className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700/50 text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder:text-gray-500"
-                placeholder="Your contact number"
-              />
-            </div>
+                  placeholder="Your contact number"
+                />
+              </div>
 
-            <div>
+              <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                Discord ID
-              </label>
-              <input
-                type="text"
-                value={formData.discordId}
-                onChange={(e) => setFormData({ ...formData, discordId: e.target.value })}
+                  Discord ID
+                </label>
+                <input
+                  type="text"
+                  value={formData.discordId}
+                  onChange={(e) => setFormData({ ...formData, discordId: e.target.value })}
                   className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700/50 text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder:text-gray-500"
-                placeholder="Your Discord username (optional)"
-              />
-            </div>
+                  placeholder="Your Discord username (optional)"
+                />
+              </div>
 
-            {/* UPI Transaction ID Field */}
-            {event.registrationFee && (
+              {/* UPI Transaction ID Field */}
+              {event.registrationFee && (
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                  UPI Transaction ID *
-                </label>
+                    UPI Transaction ID *
+                  </label>
                   <div className="relative">
                     <CreditCard className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    required
-                    value={formData.upiTransactionId}
-                    onChange={(e) => setFormData({ ...formData, upiTransactionId: e.target.value })}
+                    <input
+                      type="text"
+                      required
+                      value={formData.upiTransactionId}
+                      onChange={(e) => setFormData({ ...formData, upiTransactionId: e.target.value })}
                       className="w-full pl-12 pr-4 py-3 bg-gray-800/50 border border-gray-700/50 text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder:text-gray-500"
-                    placeholder="Enter your UPI transaction ID"
-                  />
-                </div>
+                      placeholder="Enter your UPI transaction ID"
+                    />
+                  </div>
                   <p className="text-sm text-gray-400 mt-2">
                     Please enter the transaction ID after making the payment
-                </p>
-              </div>
-            )}
-
-              {/* Payment section above register button */}
-              <div className="border-t border-gray-700/50 pt-6">
-                <h3 className="text-lg font-semibold text-gray-200 mb-4">Payment Details</h3>
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-gray-400">Registration Fee</span>
-                  <span className="text-xl font-bold text-white">0.0001 BASE</span>
+                  </p>
                 </div>
-                
+              )}
+
+              {/* Payment Details Section */}
+              <div className="mt-6 p-4 bg-gray-800/30 rounded-xl border border-indigo-500/20">
+                <h3 className="text-lg font-semibold text-gray-200 mb-3 flex items-center">
+                  <CreditCard className="w-5 h-5 mr-2 text-indigo-400" />
+                  Payment Details
+                </h3>
+                <div className="text-gray-300 mb-4">
+                  <p className="flex items-center justify-between">
+                    <span>Registration Fee:</span>
+                    <span className="font-medium text-indigo-400">0.0001 BASE</span>
+                  </p>
+                </div>
                 {!isConnected ? (
-                  <motion.button
+                  <button
                     type="button"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
                     onClick={() => connect({ connector: cbWalletConnector })}
-                    className="w-full py-4 px-6 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl text-white font-semibold text-lg hover:shadow-lg hover:shadow-indigo-500/25 transition-all duration-300 flex items-center justify-center space-x-2"
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2"
                   >
                     <Wallet className="w-5 h-5" />
-                    <span>Connect Smart Wallet</span>
-                  </motion.button>
+                    <span>Connect Wallet</span>
+                  </button>
                 ) : (
-                  <div className="space-y-4">
-                    <div className="bg-gray-800/50 rounded-xl p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-gray-400">Wallet Address</span>
-                        <span className="text-white font-mono text-sm">
-                          {address && `${address.slice(0, 6)}...${address.slice(-4)}`}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-400">Balance</span>
-                        <span className="text-white">
-                          {balance?.formatted} {balance?.symbol}
-                        </span>
-                      </div>
-                    </div>
-
-                    <motion.button
-                      type="button"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={handlePayment}
-                      disabled={isTxLoading || !isConnected}
-                      className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-                    >
-                      {isTxLoading ? (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          <span>Processing Payment...</span>
-                        </>
-                      ) : (
-                        <>
-                          <CreditCard className="w-5 h-5" />
-                          <span>Pay 0.0001 BASE</span>
-                        </>
-                      )}
-                    </motion.button>
-
-                    <button
-                      type="button"
-                      onClick={() => disconnect()}
-                      className="w-full py-3 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition-colors"
-                    >
-                      Disconnect Wallet
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={handlePayment}
+                    disabled={transactionStatus === 'processing' || transactionStatus === 'submitted'}
+                    className={`w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2 ${
+                      (transactionStatus === 'processing' || transactionStatus === 'submitted') && 'opacity-50 cursor-not-allowed'
+                    }`}
+                  >
+                    {transactionStatus === 'processing' || transactionStatus === 'submitted' ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span>Processing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <DollarSign className="w-5 h-5" />
+                        <span>Pay 0.0001 BASE</span>
+                      </>
+                    )}
+                  </button>
                 )}
-
-                {/* Status messages */}
-                {(status || claimStatus) && (
-                  <div className="mt-4 p-4 rounded-xl bg-gray-800/50 border border-gray-700/50 space-y-3">
-                    {status && (
-                      <div className="flex items-center space-x-2">
-                        {isTxLoading ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
-                        ) : isTxSuccess ? (
-                          <CheckCircle2 className="w-4 h-4 text-green-400" />
-                        ) : (
-                          <AlertCircle className="w-4 h-4 text-yellow-400" />
-                        )}
-                        <p className="text-gray-300">{status}</p>
-                      </div>
-                    )}
-
-                    {claimError && (
-                      <div className="flex items-start space-x-3 text-red-400">
-                        <AlertCircle className="w-5 h-5 mt-0.5" />
-                        <span>{claimError}</span>
-                      </div>
-                    )}
-
-                    {claimTxHash && (
-                      <a
-                        href={`https://sepolia.basescan.org/tx/${claimTxHash}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center space-x-2 text-indigo-400 hover:text-indigo-300 transition-colors text-sm"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        <span>View Transaction on Base Sepolia Explorer</span>
-                      </a>
-                    )}
-                  </div>
+                {status && (
+                  <p className="mt-3 text-sm text-gray-400 text-center">
+                    {status}
+                  </p>
                 )}
               </div>
-
-              {/* Registration button at the bottom */}
-              <button
-                type="submit"
-                disabled={loading || !txReceipt || txReceipt.status !== 'success'}
-                className={`w-full px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 ${
-                  (loading || !txReceipt || txReceipt.status !== 'success') ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-              >
-                {loading ? (
-                  <div className="flex items-center justify-center">
-                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                    <span>Registering...</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center">
-                    <ArrowRight className="w-5 h-5 mr-2" />
-                    <span>Register for Event</span>
-                  </div>
-                )}
-              </button>
             </div>
           </form>
         )}

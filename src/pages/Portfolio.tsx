@@ -50,42 +50,42 @@ const Portfolio = () => {
       title: 'CS2 Major Championship Finals',
       category: 'Esports Tournament',
       description: 'BLAST.tv Paris Major 2023 Grand Finals - Vitality vs GamerLegion',
-      youtubeEmbed: 'https://www.youtube.com/embed/t1I93MoKoVo',
+      youtubeEmbed: 'https://www.youtube.com/embed/BdhjFVUu8hA',
       tags: ['CS2', 'Tournament', 'Grand Finals', 'Pro Play']
     },
     {
       title: 'Valorant Champions 2023',
       category: 'Esports Highlights',
       description: 'Evil Geniuses vs Paper Rex - Valorant Champions 2023 Grand Finals Highlights',
-      youtubeEmbed: 'https://www.youtube.com/embed/7No6GqMwxAc',
+      youtubeEmbed: 'https://www.youtube.com/embed/BdhjFVUu8hA',
       tags: ['Valorant', 'Champions', 'Highlights', 'Pro Play']
     },
     {
       title: 'League of Legends Worlds 2023',
       category: 'Tournament Coverage',
       description: 'T1 vs WBG - Worlds 2023 Semi-Finals Full Match',
-      youtubeEmbed: 'https://www.youtube.com/embed/0zQHxZqMEPE',
+      youtubeEmbed: 'https://www.youtube.com/embed/BdhjFVUu8hA',
       tags: ['LoL', 'Worlds', 'Semi-Finals', 'T1']
     },
     {
       title: 'Dota 2 The International',
       category: 'Championship Finals',
       description: 'Team Spirit vs PSG.LGD - The International 10 Grand Finals',
-      youtubeEmbed: 'https://www.youtube.com/embed/ZPCxvHQYdKc',
+      youtubeEmbed: 'https://www.youtube.com/embed/BdhjFVUu8hA',
       tags: ['Dota 2', 'TI10', 'Grand Finals', 'Team Spirit']
     },
     {
       title: 'PUBG Global Championship',
       category: 'Battle Royale',
       description: 'PGC 2023 Grand Finals Highlights - Best Moments',
-      youtubeEmbed: 'https://www.youtube.com/embed/p1H3GsAM5Ug',
+      youtubeEmbed: 'https://www.youtube.com/embed/BdhjFVUu8hA',
       tags: ['PUBG', 'Championship', 'Highlights', 'Esports']
     },
     {
       title: 'Rocket League World Championship',
       category: 'Esports Finals',
       description: 'RLCS 2023-24 Winter Major - Grand Finals Highlights',
-      youtubeEmbed: 'https://www.youtube.com/embed/KOI5dUhFEzg',
+      youtubeEmbed: 'https://www.youtube.com/embed/BdhjFVUu8hA',
       tags: ['Rocket League', 'RLCS', 'Major', 'Finals']
     }
   ];
@@ -113,7 +113,7 @@ const Portfolio = () => {
         { label: 'Teams', value: '32' },
         { label: 'Maps', value: '54' },
       ],
-      youtubeEmbed: 'https://www.youtube.com/embed/nuMUL8Y_Q4c',
+      youtubeEmbed: 'https://www.youtube.com/embed/BdhjFVUu8hA',
       technologies: ['8K Production', 'Player Cams', 'Match Analytics', 'Highlight Reels']
     }
   ];
@@ -139,7 +139,7 @@ const Portfolio = () => {
       status: 'upcoming',
       startTime: new Date(Date.now() + 3600000).toISOString(),
       thumbnailUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e',
-      streamUrl: 'https://youtube.com/yourchannelname'
+      streamUrl: 'https://www.youtube.com/live/BdhjFVUu8hA?si=0CDGw970lpqv-VIf'
     }
   ];
 

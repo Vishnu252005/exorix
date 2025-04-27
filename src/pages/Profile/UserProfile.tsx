@@ -452,7 +452,7 @@ const UserProfile = () => {
             title: eventData.title || "Unknown Event",
             date: eventData.date || new Date(),
             game: eventData.game || "Not specified",
-            status: 'registered',
+            status: 'completed',
             registeredEmail: regData.email || regData.userEmail || user.email,
             registeredName: regData.playerName || "Not specified",
             registrationFee: regData.registrationFee,
@@ -896,7 +896,7 @@ const UserProfile = () => {
                 </div>
               )}
 
-              {userData.registeredEvents && userData.registeredEvents.length > 0 ? (
+              {userData?.registeredEvents && userData.registeredEvents.length > 0 ? (
                 userData.registeredEvents.map((event) => (
                   <motion.div
                     key={event.id}
@@ -911,33 +911,39 @@ const UserProfile = () => {
                             <span className="text-gray-500">Game:</span> {event.game || "Not specified"}
                           </p>
                           <p className="text-sm text-gray-400">
-                            <span className="text-gray-500">Registered as:</span> {event.registeredName}
+                            <span className="text-gray-500">Registered as:</span> {event.registeredName || event.playerName}
                           </p>
-                          {event.registrationFee && (
+                          <p className="text-sm text-gray-400">
+                            <span className="text-gray-500">Registration Fee:</span> 0.0001 BASE
+                          </p>
+                          {event.transactionHash && (
                             <p className="text-sm text-gray-400">
-                              <span className="text-gray-500">Registration Fee:</span> ₹{event.registrationFee}
+                              <span className="text-gray-500">Transaction:</span>{' '}
+                              <a 
+                                href={`https://sepolia.basescan.org/tx/${event.transactionHash}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-indigo-400 hover:text-indigo-300 transition-colors"
+                              >
+                                View on BaseScan
+                              </a>
                             </p>
                           )}
-                          {event.upiTransactionId && (
-                            <p className="text-sm text-gray-400">
-                              <span className="text-gray-500">Transaction ID:</span> {event.upiTransactionId}
-                            </p>
-                          )}
-                </div>
-              </div>
+                        </div>
+                      </div>
                       <div className="flex flex-col items-end space-y-3">
                         <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          event.paymentStatus === 'verified' 
+                          event.paymentStatus === 'completed' 
                             ? 'bg-green-500/20 text-green-400'
-                            : event.paymentStatus === 'pending_verification'
+                            : event.paymentStatus === 'pending'
                             ? 'bg-yellow-500/20 text-yellow-400'
                             : 'bg-red-500/20 text-red-400'
                         }`}>
-                          {event.paymentStatus === 'verified' 
-                            ? 'Payment Verified' 
-                            : event.paymentStatus === 'pending_verification'
-                            ? 'Verification Pending'
-                            : 'Payment Pending'}
+                          {event.paymentStatus === 'completed' 
+                            ? 'Payment Completed' 
+                            : event.paymentStatus === 'pending'
+                            ? 'Payment Pending'
+                            : 'Payment Failed'}
                         </span>
                         <p className="text-sm text-gray-400">
                           {event.date ? 

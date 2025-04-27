@@ -829,12 +829,19 @@ const AdminProfile: React.FC = () => {
     }
   };
 
-  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev: FormState) => ({
-      ...prev,
-      [name]: value
-    }));
+    if (name === 'price' || name === 'stock' || name === 'rating') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: parseFloat(value)
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handlePrevStateChange = (prev: FormState): FormState => ({
@@ -2792,28 +2799,77 @@ const CreateProductModal: React.FC<{
   onClose: () => void;
   onSubmit: (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
 }> = ({ isOpen, onClose, onSubmit }) => {
-  const [formData, setFormData] = useState<FormState>({
+  const [formData, setFormData] = useState<Omit<Product, 'id' | 'createdAt' | 'updatedAt'>>({
     name: '',
-    email: '',
-    phone: '',
-    address: ''
+    description: '',
+    price: 0,
+    image: '',
+    category: 'accessories',
+    brand: '',
+    rating: 0,
+    stock: 0,
+    features: [],
+    specifications: {},
+    isFeatured: false
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: name === 'price' || name === 'stock' || name === 'rating' ? parseFloat(value) : value
     }));
   };
 
   const handleFeatureChange = (index: number, value: string) => {
-    setFormData((prevState: FormState) => {
-      const newFeatures = [...prevState.features];
+    setFormData(prev => {
+      const newFeatures = [...prev.features];
       newFeatures[index] = value;
       return {
-        ...prevState,
+        ...prev,
         features: newFeatures
+      };
+    });
+  };
+
+  const addFeature = () => {
+    setFormData(prev => ({
+      ...prev,
+      features: [...prev.features, '']
+    }));
+  };
+
+  const removeFeature = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      features: prev.features.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleSpecificationChange = (key: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      specifications: {
+        ...prev.specifications,
+        [key]: value
+      }
+    }));
+  };
+
+  const addSpecification = () => {
+    const key = prompt('Enter specification key:');
+    if (key) {
+      handleSpecificationChange(key, '');
+    }
+  };
+
+  const removeSpecification = (key: string) => {
+    setFormData(prev => {
+      const newSpecs = { ...prev.specifications };
+      delete newSpecs[key];
+      return {
+        ...prev,
+        specifications: newSpecs
       };
     });
   };
@@ -2828,10 +2884,239 @@ const CreateProductModal: React.FC<{
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-gray-900 rounded-xl p-6 max-w-2xl w-full mx-4 space-y-6">
+      <div className="bg-gray-900 rounded-xl p-6 max-w-2xl w-full mx-4 space-y-6 max-h-[90vh] overflow-y-auto">
         <h3 className="text-xl font-bold text-white">Create New Product</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* ... rest of the form content ... */}
+          <div className="space-y-2">
+            <label htmlFor="name" className="text-sm text-gray-400">Product Name</label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="description" className="text-sm text-gray-400">Description</label>
+            <textarea
+              id="description"
+              name="description"
+              value={formData.description}
+              onChange={handleInputChange}
+              className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label htmlFor="price" className="text-sm text-gray-400">Price</label>
+              <input
+                type="number"
+                id="price"
+                name="price"
+                value={formData.price}
+                onChange={handleInputChange}
+                step="0.01"
+                min="0"
+                className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="stock" className="text-sm text-gray-400">Stock</label>
+              <input
+                type="number"
+                id="stock"
+                name="stock"
+                value={formData.stock}
+                onChange={handleInputChange}
+                min="0"
+                className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="image" className="text-sm text-gray-400">Image URL</label>
+            <input
+              type="url"
+              id="image"
+              name="image"
+              value={formData.image}
+              onChange={handleInputChange}
+              className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label htmlFor="category" className="text-sm text-gray-400">Category</label>
+              <select
+                id="category"
+                name="category"
+                value={formData.category}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+                required
+              >
+                <option value="keyboard">Keyboard</option>
+                <option value="mouse">Mouse</option>
+                <option value="headset">Headset</option>
+                <option value="monitor">Monitor</option>
+                <option value="accessories">Accessories</option>
+                <option value="chair">Chair</option>
+                <option value="desk">Desk</option>
+                <option value="controller">Controller</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="brand" className="text-sm text-gray-400">Brand</label>
+              <input
+                type="text"
+                id="brand"
+                name="brand"
+                value={formData.brand}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="rating" className="text-sm text-gray-400">Rating (0-5)</label>
+            <input
+              type="number"
+              id="rating"
+              name="rating"
+              value={formData.rating}
+              onChange={handleInputChange}
+              step="0.1"
+              min="0"
+              max="5"
+              className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm text-gray-400">Features</label>
+              <button
+                type="button"
+                onClick={addFeature}
+                className="text-sm text-indigo-400 hover:text-indigo-300"
+                aria-label="Add new feature"
+                title="Add new feature"
+              >
+                + Add Feature
+              </button>
+            </div>
+            <div className="space-y-2">
+              {formData.features.map((feature, index) => (
+                <div key={index} className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    value={feature}
+                    onChange={(e) => handleFeatureChange(index, e.target.value)}
+                    className="flex-1 px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+                    placeholder="Enter feature"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeFeature(index)}
+                    className="text-red-400 hover:text-red-300"
+                    aria-label={`Remove feature ${index + 1}`}
+                    title={`Remove feature ${index + 1}`}
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm text-gray-400">Specifications</label>
+              <button
+                type="button"
+                onClick={addSpecification}
+                className="text-sm text-indigo-400 hover:text-indigo-300"
+                aria-label="Add new specification"
+                title="Add new specification"
+              >
+                + Add Specification
+              </button>
+            </div>
+            <div className="space-y-2">
+              {Object.entries(formData.specifications).map(([key, value]) => (
+                <div key={key} className="flex items-center space-x-2">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={key}
+                      disabled
+                      className="px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-gray-400"
+                      aria-label={`Specification key: ${key}`}
+                      title={`Specification key: ${key}`}
+                    />
+                    <input
+                      type="text"
+                      value={value}
+                      onChange={(e) => handleSpecificationChange(key, e.target.value)}
+                      className="px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white"
+                      placeholder="Enter value"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeSpecification(key)}
+                    className="text-red-400 hover:text-red-300"
+                    aria-label={`Remove specification ${key}`}
+                    title={`Remove specification ${key}`}
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="isFeatured"
+              name="isFeatured"
+              checked={formData.isFeatured}
+              onChange={(e) => setFormData(prev => ({ ...prev, isFeatured: e.target.checked }))}
+              className="w-4 h-4 rounded border-gray-700/50 bg-gray-800/50 text-indigo-600 focus:ring-indigo-600"
+            />
+            <label htmlFor="isFeatured" className="text-sm text-gray-400">Featured Product</label>
+          </div>
+
+          <div className="flex justify-end space-x-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            >
+              Create Product
+            </button>
+          </div>
         </form>
       </div>
     </div>
